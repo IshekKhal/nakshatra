@@ -13,12 +13,12 @@ _Updated: October 7, 2026 | Session 1 — Architecture & Phase 1 Launch_
   - [x] Initial low-contrast deep red welcome overlay unlocking permissions on first touch.
   - [x] Automated unit test suite (`tests/wake_lock.test.js`, `tests/display.test.js`) passing 100% (11/11 tests).
 
-- [ ] **Client Phase 2: Sensor Tracking, Normalization & Calibration Math**
-  - [ ] 50Hz `DeviceOrientationEvent` tracking with cross-platform heading normalization (iOS `webkitCompassHeading` vs Android Cartesian inversion `(360 - alpha) % 360`).
-  - [ ] Exponential low-pass smoothing filter ($\alpha=0.15$) with shortest-angle delta wrapping `((target - source + 180) % 360) - 180`.
-  - [ ] Single-tap Moon / horizon magnetic rebar offset calibration ($\Delta\text{Az} = (\text{Az}_{\text{true}} - \text{Heading}_{\text{sensor}} + 360) \pmod{360}$).
-  - [ ] Single-tap rooftop railing skyline elevation cutoff calibration ($\text{Alt}_{\text{skyline}}$).
-  - [ ] Automated client unit tests verifying angle wrapping, filter convergence, and rebar arithmetic.
+- [x] **Client Phase 2: Sensor Tracking, Normalization & Calibration Math**
+  - [x] 50Hz `DeviceOrientationEvent` tracking with cross-platform heading normalization (iOS `webkitCompassHeading` vs Android Cartesian inversion `(360 - alpha) % 360`).
+  - [x] Exponential low-pass smoothing filter ($\alpha=0.15$) with shortest-angle delta wrapping `((target - source + 180) % 360) - 180`.
+  - [x] Single-tap Moon / horizon magnetic rebar offset calibration ($\Delta\text{Az} = (\text{Az}_{\text{true}} - \text{Heading}_{\text{sensor}} + 360) \pmod{360}$).
+  - [x] Single-tap rooftop railing skyline elevation cutoff calibration ($\text{Alt}_{\text{skyline}}$).
+  - [x] Automated client unit tests verifying angle wrapping, filter convergence, and rebar arithmetic (22/22 tests passing).
 
 - [ ] **Client Phase 3: Local Astronomy Engine & Celestial Catalogs**
   - [ ] `astronomy-engine` integration for real-time horizontal coordinates of Moon, Sun, 8 planets + Pluto.

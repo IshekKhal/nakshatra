@@ -8,6 +8,8 @@ _Persistent Architectural Decisions & Hard-Won Gotchas_
 * **Android Heading Inversion:** Android Chrome reports standard W3C `alpha` (counter-clockwise around screen Z-axis). Convert to clockwise compass heading using `(360 - alpha) % 360`.
 * **Screen Wake Lock Auto-Release & WebKit Transient Gate:** `navigator.wakeLock.request('screen')` is automatically released by the mobile OS if the user switches apps or minimizes the tab. A document `visibilitychange` listener immediately re-acquires the lock when `document.visibilityState === 'visible'`. On iOS Safari 16.4+, if headless re-acquisition fails with `NotAllowedError` due to expired user activation, register a one-time `pointerdown` listener to re-acquire seamlessly on the user's next screen contact.
 * **Web Audio Autoplay Suspension:** Mobile browsers initialize `AudioContext` in `'suspended'` state. The initial welcome tap must call `await audioContext.resume()`, which permanently unlocks audio playback for the session.
+* **Android deviceorientationabsolute Binding:** Android Chrome routes relative orientation to the standard `'deviceorientation'` event, causing arbitrary reference drifts unless geomagnetic calibration is active. When `'ondeviceorientationabsolute' in window` is present, binding specifically to `'deviceorientationabsolute'` ensures Earth-referenced magnetic coordinates.
+* **Device Tilt Pitch Clamping:** Mobile browsers report pitch (`beta`) in the range $[-180, 180]^\circ$. For upward palm tilt stargazing, clamping pitch to $[0, 90]^\circ$ prevents coordinate inversion when the device tilts past vertical or rolls upside-down.
 
 ## 2. Biological Optics & Display Physics
 * **Rhodopsin Photobleaching:** Bleaching occurs in $<500\text{ms}$ upon exposure to white/blue screen glare ($>450\text{nm}$). Recovery of scotopic sensitivity takes 20 to 30 continuous minutes in darkness.
@@ -25,6 +27,8 @@ _Persistent Architectural Decisions & Hard-Won Gotchas_
   - Clenched fist $\approx 10^\circ$ (matches acceptance cone)
   - Two fists $\approx 20^\circ$
   - Outstretched hand $\approx 25^\circ$
+* **Exponential Low-Pass Filter Seam Protection:** In discrete 50Hz sensor updates, filtering heading via `smoothedHeading = (smoothedHeading + alpha * diff) % 360` requires `diff = ((target - source + 180) % 360) - 180`. If `diff < -180`, adding 360 guarantees signed shortest path across the 0/360 discontinuity. At $\alpha = 0.15$, alternating 30-degree noise swings converge to $\le 2.0^\circ$ deviation in under 20 iterations.
+* **Rooftop Skyline Clamping:** Railing elevation cutoff calibration enforces a hard lower boundary of $5.0^\circ$ (`Math.max(5.0, currentAltitude)`) to filter out ground-level thermal scintillation and artificial obstruction artifacts.
 
 ## 4. Operational Protocol
 * All Sub-Chat execution prompts are written directly to `prompt.txt` in pure plain text (no markdown headers, no bold/italics, no ASCII dividers).
