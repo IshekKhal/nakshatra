@@ -38,16 +38,33 @@ export class EphemerisEngine {
     this.ACCEPTANCE_CONE = 10.0; // degrees
     this.DWELL_DURATION_MS = 1200; // milliseconds
     this.HYSTERESIS_CONE = 14.0; // degrees
+
+    // High-performance topocentric coordinate cache (2000ms TTL)
+    this.EPHEMERIS_CACHE_TTL_MS = options.cacheTtlMs ?? 2000;
+    this._cachedRawTargets = null;
+    this._lastCacheTimestamp = 0;
+    this._lastCacheKey = null;
   }
 
   /**
    * Updates observer geographic location for topocentric coordinates.
+   * Invalidates coordinate cache.
    * @param {number} latitude - Latitude in degrees [-90, 90].
    * @param {number} longitude - Longitude in degrees [-180, 180].
    * @param {number} [elevation=0] - Elevation in meters.
    */
   setObserver(latitude, longitude, elevation = 0) {
     this.observer = new Astronomy.Observer(latitude, longitude, elevation);
+    this.invalidateCache();
+  }
+
+  /**
+   * Explicitly clears cached celestial coordinates.
+   */
+  invalidateCache() {
+    this._cachedRawTargets = null;
+    this._lastCacheTimestamp = 0;
+    this._lastCacheKey = null;
   }
 
   /**
@@ -144,43 +161,61 @@ export class EphemerisEngine {
   /**
    * Computes horizontal coordinates for all supported celestial targets and filters out
    * targets below horizon or obscured by skylineManager.
+   * Utilizes internal cache when called repeatedly within EPHEMERIS_CACHE_TTL_MS.
    * @param {Date} [date=new Date()]
    * @param {Object|null} [skylineManager=null]
+   * @param {boolean} [forceRefresh=false]
    * @returns {Array<Object>} Visible targets with altitude and azimuth.
    */
-  getAllVisibleTargets(date = new Date(), skylineManager = null) {
-    const targets = [];
+  getAllVisibleTargets(date = new Date(), skylineManager = null, forceRefresh = false) {
+    const nowMs = date instanceof Date ? date.getTime() : Date.now();
+    const observerKey = `${this.observer.latitude}_${this.observer.longitude}_${this.observer.elevation}`;
 
-    // 1. Solar system bodies
-    for (const bodyName of SOLAR_SYSTEM_BODIES) {
-      try {
-        const bodyTarget = this.computeBodyHorizontal(bodyName, date);
-        targets.push(bodyTarget);
-      } catch (err) {
-        // Skip body if ephemeris computation encounters out-of-range bounds
+    let rawTargets = this._cachedRawTargets;
+    if (
+      forceRefresh ||
+      !rawTargets ||
+      this._lastCacheKey !== observerKey ||
+      Math.abs(nowMs - this._lastCacheTimestamp) >= this.EPHEMERIS_CACHE_TTL_MS
+    ) {
+      const targets = [];
+
+      // 1. Solar system bodies
+      for (const bodyName of SOLAR_SYSTEM_BODIES) {
+        try {
+          const bodyTarget = this.computeBodyHorizontal(bodyName, date);
+          targets.push(bodyTarget);
+        } catch (err) {
+          // Skip body if ephemeris computation encounters out-of-range bounds
+        }
       }
-    }
 
-    // 2. Bright navigation stars
-    for (const star of BRIGHT_STARS) {
-      const starTarget = this.computeStarHorizontal(star, date);
-      targets.push(starTarget);
-    }
+      // 2. Bright navigation stars
+      for (const star of BRIGHT_STARS) {
+        const starTarget = this.computeStarHorizontal(star, date);
+        targets.push(starTarget);
+      }
 
-    // 3. Messier deep-sky objects
-    for (const messier of MESSIER_OBJECTS) {
-      const deepSkyTarget = this.computeCustomTargetHorizontal(messier, date);
-      targets.push(deepSkyTarget);
-    }
+      // 3. Messier deep-sky objects
+      for (const messier of MESSIER_OBJECTS) {
+        const deepSkyTarget = this.computeCustomTargetHorizontal(messier, date);
+        targets.push(deepSkyTarget);
+      }
 
-    // 4. Meteor radiants
-    for (const radiant of METEOR_RADIANTS) {
-      const radiantTarget = this.computeCustomTargetHorizontal(radiant, date);
-      targets.push(radiantTarget);
+      // 4. Meteor radiants
+      for (const radiant of METEOR_RADIANTS) {
+        const radiantTarget = this.computeCustomTargetHorizontal(radiant, date);
+        targets.push(radiantTarget);
+      }
+
+      rawTargets = targets;
+      this._cachedRawTargets = targets;
+      this._lastCacheTimestamp = nowMs;
+      this._lastCacheKey = observerKey;
     }
 
     // Filter by mathematical horizon and rooftop skyline
-    return targets.filter((target) => {
+    return rawTargets.filter((target) => {
       if (target.altitude <= 0) {
         return false;
       }

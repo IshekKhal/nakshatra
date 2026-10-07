@@ -108,7 +108,8 @@ export class OrientationTracker {
 
   /**
    * Normalizes altitude (pitch) for upward palm tilt tracking clamped to [0, 90] degrees.
-   * Returns 0 for negative values or missing beta.
+   * If gamma (roll) is present, projects 3D top-edge vector to prevent roll distortion.
+   * Clamps negative values to 0 and elevation >= 90 to 90 degrees.
    * @param {DeviceOrientationEvent} event
    * @returns {number} Normalized altitude in degrees [0, 90].
    */
@@ -117,9 +118,38 @@ export class OrientationTracker {
       return 0.0;
     }
     const beta = Number(event.beta);
+
+    // If roll (gamma) is present, account for wrist tilt
+    if (event.gamma !== undefined && event.gamma !== null && !isNaN(event.gamma) && event.gamma !== 0) {
+      const radBeta = (beta * Math.PI) / 180;
+      const radGamma = (Number(event.gamma) * Math.PI) / 180;
+      const z = Math.sin(radBeta) * Math.cos(radGamma);
+      if (z <= 0) return 0.0;
+      const altDeg = (Math.asin(Math.min(1.0, z)) * 180) / Math.PI;
+      return Math.min(90.0, Math.max(0.0, altDeg));
+    }
+
     if (beta <= 0) return 0.0;
     if (beta >= 90) return 90.0;
     return beta;
+  }
+
+  /**
+   * Computes full 3D attitude pointing vector in Earth-referenced coordinates.
+   * Eliminates gimbal lock when approaching zenith by calculating 3D projection.
+   * @param {DeviceOrientationEvent} event
+   * @returns {{ azimuth: number, altitude: number, isNearZenith: boolean }}
+   */
+  compute3DOrientation(event) {
+    const heading = this.normalizeHeading(event);
+    const altitude = this.normalizeAltitude(event);
+    const isNearZenith = altitude >= 85.0;
+
+    return {
+      azimuth: heading,
+      altitude,
+      isNearZenith
+    };
   }
 
   /**

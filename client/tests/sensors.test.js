@@ -181,4 +181,35 @@ describe('OrientationTracker', () => {
     assert.strictEqual(tracker.isTracking, false);
     assert.strictEqual(listeners['deviceorientationabsolute'], undefined);
   });
+
+  test('Test 8: compute3DOrientation accounts for wrist roll gamma and handles near-zenith pointing', () => {
+    const tracker = new OrientationTracker();
+
+    // Zero roll (flat palm, 45 degree tilt)
+    const flat = tracker.compute3DOrientation({
+      webkitCompassHeading: 90,
+      beta: 45,
+      gamma: 0
+    });
+    assert.strictEqual(flat.azimuth, 90);
+    assert.strictEqual(flat.altitude, 45);
+    assert.strictEqual(flat.isNearZenith, false);
+
+    // With 20-degree wrist roll tilt, 3D vector projected altitude is accurately computed
+    const rolled = tracker.compute3DOrientation({
+      webkitCompassHeading: 90,
+      beta: 45,
+      gamma: 20
+    });
+    assert.strictEqual(rolled.azimuth, 90);
+    assert.ok(rolled.altitude < 45 && rolled.altitude > 40, `Altitude with 20 deg roll: ${rolled.altitude}`);
+
+    // Near zenith (88 degrees altitude)
+    const zenith = tracker.compute3DOrientation({
+      webkitCompassHeading: 90,
+      beta: 88,
+      gamma: 0
+    });
+    assert.strictEqual(zenith.isNearZenith, true);
+  });
 });

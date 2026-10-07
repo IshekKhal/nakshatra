@@ -4,9 +4,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.config import get_settings
-from backend.app.routes import microclimate, satellites
+from backend.app.routes import microclimate, narrate, satellites
 
 settings = get_settings()
+
+if settings.SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        traces_sample_rate=1.0,
+        send_default_pii=True,
+    )
 
 app = FastAPI(
     title="Project Scotopic API",
@@ -37,3 +46,4 @@ async def health_check() -> dict:
 # Register domain routes under /api/v1 prefix
 app.include_router(microclimate.router, prefix="/api/v1")
 app.include_router(satellites.router, prefix="/api/v1")
+app.include_router(narrate.router, prefix="/api/v1")

@@ -138,4 +138,48 @@ describe('AudioStreamReceiver', () => {
     assert.strictEqual(receiverTimeout.isStreaming, false);
     assert.ok(timeoutResult.buffer instanceof ArrayBuffer);
   });
+
+  it('Test 5: SpeechSynthesis offline fallback speaks genuine celestial facts when network is unreachable', async () => {
+    let spokenText = null;
+    let cancelled = false;
+
+    const mockSpeechSynthesis = {
+      speak(utterance) {
+        spokenText = utterance.text;
+      },
+      cancel() {
+        cancelled = true;
+      }
+    };
+
+    // Global mock for SpeechSynthesisUtterance if not in browser
+    globalThis.SpeechSynthesisUtterance = class {
+      constructor(text) {
+        this.text = text;
+        this.rate = 1.0;
+        this.pitch = 1.0;
+      }
+    };
+
+    const failingFetch = async () => {
+      throw new Error('Offline');
+    };
+
+    const receiver = new AudioStreamReceiver({
+      fetchFn: failingFetch,
+      timeoutMs: 100,
+      speechSynthesis: mockSpeechSynthesis
+    });
+
+    const result = await receiver.playTargetNarration('jupiter');
+    assert.strictEqual(result.success, true);
+    assert.strictEqual(result.source, 'cache');
+    assert.ok(spokenText && spokenText.includes('Jupiter'), `Expected spoken text for Jupiter, got: ${spokenText}`);
+
+    // Verify stop cancels active speech
+    receiver.stop();
+    assert.strictEqual(cancelled, true);
+
+    delete globalThis.SpeechSynthesisUtterance;
+  });
 });

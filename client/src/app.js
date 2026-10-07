@@ -215,11 +215,20 @@ export function initApp() {
   return appInstance;
 }
 
-// Auto-boot if running in browser DOM environment
+// Auto-boot and register Service Worker if running in browser DOM environment
 if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => initApp());
-  } else {
+  const boot = () => {
     initApp();
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch((err) => {
+        console.warn('Scotopic: Service Worker registration failed:', err);
+      });
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
   }
 }

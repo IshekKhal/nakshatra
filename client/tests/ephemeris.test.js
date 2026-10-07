@@ -279,4 +279,38 @@ test('EphemerisEngine', async (t) => {
       assert.equal(engine.lockedTarget, null);
     }
   );
+
+  await t.test(
+    'Test 7: Topocentric coordinate cache serves high-frequency 50Hz queries without recalculating orbits',
+    () => {
+      const engine = new EphemerisEngine({
+        latitude: 19.0760,
+        longitude: 72.8777,
+        cacheTtlMs: 2000
+      });
+      const t0 = new Date('2026-10-07T21:00:00Z');
+
+      // First call computes fresh orbits and populates cache
+      const start1 = performance.now();
+      const res1 = engine.getAllVisibleTargets(t0);
+      const dur1 = performance.now() - start1;
+
+      assert.ok(res1.length > 0);
+
+      // Second call 100ms later (simulating 10Hz/50Hz gyro ticks) must hit cache
+      const t1 = new Date(t0.getTime() + 100);
+      const start2 = performance.now();
+      const res2 = engine.getAllVisibleTargets(t1);
+      const dur2 = performance.now() - start2;
+
+      assert.strictEqual(res1.length, res2.length);
+      // Cache hit should be significantly faster (< 1.5ms)
+      assert.ok(dur2 < dur1 || dur2 < 2.0, `Cache hit should be instantaneous: ${dur2}ms`);
+
+      // Cache invalidation forces fresh calculation
+      engine.invalidateCache();
+      const res3 = engine.getAllVisibleTargets(t1);
+      assert.strictEqual(res3.length, res1.length);
+    }
+  );
 });

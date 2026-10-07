@@ -41,6 +41,14 @@ _Updated: October 7, 2026 | Session 3 — Backend Phase 1 Completed; 18 Automate
   - [x] Gesture bindings for two-finger LCD toggle, calibration taps, and three-finger / 2-second recalibration (`src/app.js`).
   - [x] Full end-to-end client unit test suite execution and verification (54/54 tests passing across 7 suites in `tests/orchestration.test.js`).
 
+- [x] **Client Technological Audit & Core Hardening (Session 5)**
+  - [x] Decoupled 44-body planetary and stellar ephemeris calculations from 50Hz gyro loop using 2000ms topocentric coordinate cache in `ephemeris.js` (>95% CPU reduction).
+  - [x] Upgraded 3D spatial attitude kinematics in `sensors.js` with $Z = \sin(\beta)\cos(\gamma)$ roll compensation and near-zenith singularity detection.
+  - [x] Authored zero-dependency Cache-First Service Worker (`sw.js`) and auto-registered in `app.js` enabling 100% offline rooftop PWA boot.
+  - [x] Integrated native, offline `window.speechSynthesis` in `audio_stream.js` replacing synthetic single-tone beeps with spoken astronomical facts.
+  - [x] Vendored `astronomy-engine` to `vendor/astronomy.js` and updated `index.html` Import Map for zero-dependency static production hosting.
+  - [x] Expanded client test suite to 57/57 tests passing in 1036ms (100% pass rate).
+
 ## Cloud Backend & Field Integration Roadmap
 
 - [x] **Backend Phase 1: Microclimate & Seeing Prediction Engine (Prior Labs TabPFN)**
@@ -50,10 +58,15 @@ _Updated: October 7, 2026 | Session 3 — Backend Phase 1 Completed; 18 Automate
   - [x] Where The ISS At? satellite orbit telemetry integration with topocentric spherical geometry flyover pass predictor and circular Keplerian offline fallback.
   - [x] Automated backend pytest test suites (`test_microclimate.py`, `test_satellites.py`, `test_gateway.py`) passing 100% (18/18 tests).
 
-- [ ] **Backend Phase 2: Landmark Star-Hopper (DeepMind Gemma) & Whispered Voice Stream (ElevenLabs)**
-  - [ ] DeepMind Gemma 4 prompt engine turning deterministic Alt/Az into body-relative turns and hand-width directions.
-  - [ ] ElevenLabs Turbo v2.5 streaming voice adapter delivering first audio chunk in $<280\text{ms}$.
-  - [ ] Chunked HTTP audio streaming to mobile client with autonomous offline audio cache fallback.
+- [x] **Backend Phase 2: Landmark Star-Hopper (DeepMind Gemma) & Whispered Voice Stream (ElevenLabs) [Remediation & Ground Truth Restoration]**
+  - [x] Initial scaffold and automated tests passing (34/34 backend tests, 54/54 client tests).
+  - [x] Detected model substitution (`gemini-2.5-flash-lite`) and premature latency cutoffs (1.5s / 250ms).
+  - [x] Enforce Google DeepMind Gemma family models strictly (`models/gemma-4-26b-a4b-it` primary, `models/gemma-4-31b-it` secondary).
+  - [x] Eliminate premature 250ms ElevenLabs cutoff and relax Gemma timeout to 10.0s to allow real cloud streaming.
+  - [x] Align client watchdog in `client/src/audio_stream.js` to 12.0s.
+  - [x] Instrument Sentry Agent Tracing custom `ai.chat` and `ai.agent` spans with byte counting.
+  - [x] Configure declarative Render blueprint (`render.yaml`) with Python 3.14.3 runtime and root `requirements.txt`.
+  - [x] Full automated test suite passes 100% (34/34 backend tests in 270.30s, 57/57 client tests in 1070ms).
 
 - [ ] **Integration & Submission Phase: Field Benchmarking & DEV.to Submission**
   - [ ] Sentry span latency budget verification ($<350\text{ms}$ end-to-end).

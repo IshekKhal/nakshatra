@@ -49,18 +49,18 @@ export function createSyntheticWav(frequency = 440, durationMs = 250, sampleRate
 }
 
 export const PRIMARY_CELESTIAL_TARGETS = [
-  { id: 'moon', name: 'Moon', freq: 261.63 },
-  { id: 'jupiter', name: 'Jupiter', freq: 329.63 },
-  { id: 'saturn', name: 'Saturn', freq: 392.00 },
-  { id: 'mars', name: 'Mars', freq: 440.00 },
-  { id: 'venus', name: 'Venus', freq: 523.25 },
-  { id: 'sirius', name: 'Sirius', freq: 587.33 },
-  { id: 'vega', name: 'Vega', freq: 659.25 },
-  { id: 'betelgeuse', name: 'Betelgeuse', freq: 698.46 },
-  { id: 'rigel', name: 'Rigel', freq: 783.99 },
-  { id: 'orionids', name: 'Orionids', freq: 880.00 },
-  { id: 'andromeda', name: 'M31 Andromeda', freq: 987.77 },
-  { id: 'm31', name: 'M31 Andromeda', freq: 987.77 }
+  { id: 'moon', name: 'Moon', freq: 261.63, description: "The Moon, Earth's natural satellite, approximately 384,000 kilometers away." },
+  { id: 'jupiter', name: 'Jupiter', freq: 329.63, description: "Jupiter, the largest gas giant in our Solar System, with its Galilean moons." },
+  { id: 'saturn', name: 'Saturn', freq: 392.00, description: "Saturn, famous for its extensive ring system of ice and rock particles." },
+  { id: 'mars', name: 'Mars', freq: 440.00, description: "Mars, the red planet, rich in iron oxide with towering Olympus Mons." },
+  { id: 'venus', name: 'Venus', freq: 523.25, description: "Venus, Earth's sister planet shrouded in reflective clouds." },
+  { id: 'sirius', name: 'Sirius', freq: 587.33, description: "Sirius, the brightest star in the night sky in Canis Major." },
+  { id: 'vega', name: 'Vega', freq: 659.25, description: "Vega, a brilliant blue-white luminary in the constellation Lyra." },
+  { id: 'betelgeuse', name: 'Betelgeuse', freq: 698.46, description: "Betelgeuse, a luminous red supergiant nearing the end of its life in Orion." },
+  { id: 'rigel', name: 'Rigel', freq: 783.99, description: "Rigel, a bright blue-white supergiant marking the foot of Orion." },
+  { id: 'orionids', name: 'Orionids', freq: 880.00, description: "The Orionids meteor radiant, trailing from Halley's Comet." },
+  { id: 'andromeda', name: 'M31 Andromeda', freq: 987.77, description: "The Andromeda Galaxy, our nearest spiral neighbor, 2.5 million light years distant." },
+  { id: 'm31', name: 'M31 Andromeda', freq: 987.77, description: "The Andromeda Galaxy, our nearest spiral neighbor, 2.5 million light years distant." }
 ];
 
 export class AudioStreamReceiver {
@@ -69,20 +69,23 @@ export class AudioStreamReceiver {
    * @param {AudioContext} [options.audioContext] Optional Web Audio context
    * @param {Function} [options.fetchFn] Optional fetch implementation
    * @param {string} [options.apiEndpoint='/api/v1/narrate'] Base narrate API endpoint
-   * @param {number} [options.timeoutMs=400] Latency budget before cache fallback
+   * @param {number} [options.timeoutMs=12000] Latency budget before cache fallback
    * @param {IDBDatabase} [options.db] Injected IDBDatabase instance
+   * @param {SpeechSynthesis} [options.speechSynthesis] Optional SpeechSynthesis implementation
    */
   constructor({
     audioContext = null,
     fetchFn = null,
     apiEndpoint = '/api/v1/narrate',
-    timeoutMs = 400,
-    db = null
+    timeoutMs = 12000,
+    db = null,
+    speechSynthesis = null
   } = {}) {
     this.audioCtx = audioContext || null;
     this.fetchFn = fetchFn;
     this.apiEndpoint = apiEndpoint;
     this.timeoutMs = timeoutMs;
+    this.speechSynthesis = speechSynthesis || (typeof window !== 'undefined' ? window.speechSynthesis : null);
 
     this._isStreaming = false;
     this._isPlaying = false;
@@ -324,15 +327,53 @@ export class AudioStreamReceiver {
 
   /**
    * Fallback handler: retrieves and plays audio from offline cache.
+   * If SpeechSynthesis is available, speaks genuine celestial narrative facts offline.
    * @private
    */
   async _fallbackToCache(targetId) {
+    // If SpeechSynthesis is available in browser, speak genuine celestial information offline
+    const targetInfo = PRIMARY_CELESTIAL_TARGETS.find(
+      (t) => t.id.toLowerCase() === String(targetId).toLowerCase()
+    );
+
+    if (this.speechSynthesis && targetInfo && targetInfo.description) {
+      this._speakNarration(targetInfo.description);
+    }
+
     const cachedBuffer = await this.getCachedAudio(targetId);
     if (cachedBuffer) {
       await this._playBuffer(cachedBuffer);
       return { success: true, source: 'cache', buffer: cachedBuffer };
     }
     return { success: false, source: 'none' };
+  }
+
+  /**
+   * Speaks astronomical narrative text using browser SpeechSynthesis.
+   * Configured for a calm, relaxed stargazing tempo and pitch.
+   * @param {string} text
+   * @private
+   */
+  _speakNarration(text) {
+    if (!this.speechSynthesis) return;
+    try {
+      if (typeof this.speechSynthesis.cancel === 'function') {
+        this.speechSynthesis.cancel();
+      }
+
+      const SpeechUtteranceClass = (typeof window !== 'undefined' && window.SpeechSynthesisUtterance)
+        ? window.SpeechSynthesisUtterance
+        : (typeof SpeechSynthesisUtterance !== 'undefined' ? SpeechSynthesisUtterance : null);
+
+      if (SpeechUtteranceClass) {
+        const utterance = new SpeechUtteranceClass(text);
+        utterance.rate = 0.88; // Relaxed stargazing tempo
+        utterance.pitch = 0.95; // Calm, lowered pitch for night sky atmosphere
+        if (typeof this.speechSynthesis.speak === 'function') {
+          this.speechSynthesis.speak(utterance);
+        }
+      }
+    } catch (_) {}
   }
 
   /**
@@ -380,9 +421,15 @@ export class AudioStreamReceiver {
   }
 
   /**
-   * Halts active playback and ongoing streaming requests immediately.
+   * Halts active playback, speech narration, and ongoing streaming requests immediately.
    */
   stop() {
+    if (this.speechSynthesis && typeof this.speechSynthesis.cancel === 'function') {
+      try {
+        this.speechSynthesis.cancel();
+      } catch (_) {}
+    }
+
     if (this._activeAbortController) {
       try {
         this._activeAbortController.abort();

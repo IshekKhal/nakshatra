@@ -85,4 +85,36 @@ _Persistent Architectural Decisions & Hard-Won Gotchas_
 * **Offline Orbital Propagator Fallback:** When Where The ISS At? is unreachable, satellite coordinates propagate from reference epoch $t_{\text{ref}} = 1791386173.0$ via circular Keplerian equations using orbit rate $\omega_{\text{orb}} = 2\pi / 5560.0\text{ rad/s}$ and Earth sidereal rotation $\omega_E = 2\pi / 86164.09\text{ rad/s}$.
 * **CORS Credential Reflection:** When `allow_credentials=True`, W3C security rules prohibit wildcard `*` on `Access-Control-Allow-Origin`. Starlette CORSMiddleware reflects the requesting origin and sets `Access-Control-Allow-Credentials: true`.
 
+## 10. Backend Phase 2 Invariants & Voice Streaming Architecture
+* **Star-Hopper Spatial Translation Invariants:** All technical celestial coordinate jargon is banned from user speech (no Right Ascension, Declination, Alt/Az degrees, numerical degrees notation `45°`, or arcminutes). Horizontal coordinates are converted into:
+  - 8 body-relative turns: `Face direct north`, `Turn half a right turn to your northeast`, `Turn to face direct east`, `Turn toward your southeast`, `Face direct south`, `Turn toward your southwest`, `Turn to face direct west`, `Turn toward your northwest`.
+  - 6 visceral altitude hand/head tiers: `look down near the low skyline` ($<5^\circ$), `raise your eyes one fist-width above your horizon` ($5^\circ - 20^\circ$), `raise your gaze about two clenched fists above the skyline` ($20^\circ - 40^\circ$), `look halfway between the horizon and the point straight overhead` ($40^\circ - 60^\circ$), `tilt your head back toward the upper dome of the sky` ($60^\circ - 80^\circ$), and `look straight up at the zenith directly above your head` ($80^\circ - 90^\circ$).
+  - Target sensory anchors: Moon (luminous silver craters), Saturn (pale golden disk with magnificent rings), Jupiter (brilliant pearl with four tiny moons), Mars (steady amber ember), Venus (piercing jewel), Vega (icy sapphire), Sirius (diamond beacon), Betelgeuse (deep orange giant), Rigel (fierce blue supergiant), M31 (ghostly smudge), Orionids (swift silent streaks of cometary dust).
+  - Sentence bounds: Exactly 1 to 2 sentences (maximum 40 words total).
+* **Deterministic Offline Trigonometric Fallback (<0.5ms):** When Google AI Studio API is offline, throttled, or encounters latency spikes, `GemmaStarHopperService.build_deterministic_guidance()` generates physical body turns and fist spans with zero network round-trip.
+* **Google DeepMind Gemma Model Invariant:** Gemini models are strictly prohibited. The Hacktoberfest sponsor category requires Google DeepMind Gemma. On the host's Google GenAI API endpoint, verified active Gemma models are:
+  - `models/gemma-4-26b-a4b-it` (Gemma 4 26B A4B IT, primary, ~7.63s empirical latency)
+  - `models/gemma-4-31b-it` (Gemma 4 31B IT, secondary fallback, ~18.7s empirical latency)
+  - `thinking_config` must be unconstrained (default `budget=None`), and output text must be extracted from candidates after reasoning completes. Small token clamps are forbidden because they exhaust the budget during thinking.
+  - LLM service timeout is set to 10.0s to allow real Gemma inference to complete before engaging the deterministic trigonometric fallback.
+* **ElevenLabs Low-Latency Voice Synthesis Modernization:**
+  - `AsyncElevenLabs` integration eliminates thread pool blocking by yielding chunks progressively via native `AsyncIterator[bytes]`.
+  - Primary voice: `JBFqnCBsd6RMkjVDRZzb` (George) with `[whispers]` prompt guidance and `VoiceSettings(stability=0.75, similarity_boost=0.75, style=0.0, use_speaker_boost=True)`.
+  - Format: `mp3_22050_32` for low bandwidth and mobile compatibility.
+  - Model: Modern `eleven_flash_v2_5` with fallback to `eleven_turbo_v2_5` (dropping deprecated `optimize_streaming_latency` parameter).
+  - First-chunk WAN latency is empirically ~430ms to 510ms. Artificial timeouts under 1.0s are prohibited. Fallback cache is engaged strictly on network disconnects or 5xx server errors.
+* **Client Audio Watchdog Invariant:** The client's `AbortController` timeout is set to 12.0s (`timeoutMs = 12000`) in `client/src/audio_stream.js` to accommodate realistic WAN roundtrips for Gemma inference (~7.6s) and ElevenLabs speech generation (~0.5s) without aborting premature fallbacks.
+* **Starlette StreamingResponse Protocol:** `GET /api/v1/narrate` streams binary `audio/mpeg` chunks progressively with `Cache-Control: public, max-age=3600` and `X-Target-Id` headers. Bound parameters (`lat`, `lon`, `alt`, `az`) validate physical ranges, returning HTTP 422 on invalid coordinates.
 
+## 11. Sentry Agent Tracing & Render Cloud Deployment Architecture
+* **Sentry Agent Tracing Spans:**
+  - In Sentry SDK 2.64+, `start_span(op="...", name="...")` is the standard parameter (`description` is deprecated).
+  - Span 1: `sentry_sdk.start_span(op="ai.chat", name="gemma_starhopper_synthesis")` records `ai.model_id = "models/gemma-4-26b-a4b-it"`, `target`, and `guidance_length`.
+  - Span 2: `sentry_sdk.start_span(op="ai.agent", name="elevenlabs_whisper_stream")` is wrapped inside an asynchronous generator `traced_stream()`. Because `StreamingResponse` consumes chunks after the route returns, the generator wrapper keeps the span active for the entire streaming duration, recording `ai.model_id = "eleven_flash_v2_5"`, `target`, and `bytes_streamed`.
+* **Render Deployment Runtime (Python 3.14.3):**
+  - Render natively supports Python 3.14, with `3.14.3` set as the default native runtime for new services as of February 2026.
+  - `render.yaml` specifies `PYTHON_VERSION: 3.14.3` under `envVars` for `scotopic-api` and deploys static client files from `./client` for `scotopic-client`.
+  - Root `requirements.txt` tracks modern 2026 production pins (`fastapi>=0.141.0`, `google-genai>=2.16.0`, `elevenlabs>=2.71.0`, `tabpfn-client>=0.6.1`, `sentry-sdk>=2.64.0`, `python-dotenv>=1.2.0`).
+* **Known Gotchas:**
+  - Gemma 4 reasoning traces: `models/gemma-4-26b-a4b-it` generates internal thought tokens (`thought=True`). Do not clamp token counts to small values (e.g. 50); let thinking complete naturally, and `resp.text` returns the narration string cleanly.
+  - Sentry event flushing: In test runners and short-lived scripts, Sentry buffers events asynchronously. Allow clean shutdown or test suite teardown to let Sentry deliver spans without premature socket termination.

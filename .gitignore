@@ -3,5 +3,6 @@
 
 
 *.txt
+!requirements.txt
 .env*
 !.env.example
