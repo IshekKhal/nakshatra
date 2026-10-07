@@ -1,0 +1,15 @@
+{
+  "name": "scotopic-client",
+  "version": "1.0.0",
+  "description": "Zero-lumen biological night-sky stargazing engine",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "astronomy",
+    "scotopic",
+    "zero-lumen"
+  ],
+  "license": "MIT"
+}

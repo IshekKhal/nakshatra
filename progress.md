@@ -4,14 +4,14 @@ _Updated: October 7, 2026 | Session 1 — Architecture & Phase 1 Launch_
 
 ## Client-Side Execution Roadmap Status
 
-- [ ] **Client Phase 1: Zero-Lumen Scaffolding & Optical Display Core**
+- [x] **Client Phase 1: Zero-Lumen Scaffolding & Optical Display Core**
   - [x] Architectural specification & execution prompt authoring in `prompt.txt`.
-  - [ ] PWA manifest (`manifest.json`), viewport config, standalone black-translucent status bar.
-  - [ ] OLED `#000000` canvas (0.000 nits) and two-finger toggle for budget LCD Deep Red mode (`#1a0000`, $\lambda > 650\text{ nm}$).
-  - [ ] Screen Wake Lock manager (`src/wake_lock.js`) with visibility change & iOS touch fallback re-acquisition.
-  - [ ] Single-pixel sub-threshold status dot (`#2b0000` standby / `#880000` locked).
-  - [ ] Initial low-contrast deep red welcome overlay unlocking permissions on first touch.
-  - [ ] Automated unit test suite (`tests/wake_lock.test.js`, `tests/display.test.js`) passing 100%.
+  - [x] PWA manifest (`manifest.json`), viewport config, standalone black-translucent status bar.
+  - [x] OLED `#000000` canvas (0.000 nits) and two-finger toggle for budget LCD Deep Red mode (`#1a0000`, $\lambda > 650\text{ nm}$).
+  - [x] Screen Wake Lock manager (`src/wake_lock.js`) with visibility change & iOS touch fallback re-acquisition.
+  - [x] Single-pixel sub-threshold status dot (`#2b0000` standby / `#880000` locked).
+  - [x] Initial low-contrast deep red welcome overlay unlocking permissions on first touch.
+  - [x] Automated unit test suite (`tests/wake_lock.test.js`, `tests/display.test.js`) passing 100% (11/11 tests).
 
 - [ ] **Client Phase 2: Sensor Tracking, Normalization & Calibration Math**
   - [ ] 50Hz `DeviceOrientationEvent` tracking with cross-platform heading normalization (iOS `webkitCompassHeading` vs Android Cartesian inversion `(360 - alpha) % 360`).

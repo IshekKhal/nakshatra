@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <title>Scotopic (AstroWhisper)</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="status-dot" aria-hidden="true"></div>
+  <canvas id="scotopic-canvas" aria-label="Scotopic Zero-Lumen Canvas"></canvas>
+
+  <section id="welcome-overlay" role="dialog" aria-modal="true" aria-label="Welcome Instructions">
+    <div class="instructions-card">
+      <h1 class="title">Scotopic: Eyes Up Stargazing</h1>
+      <p class="instruction">Tap anywhere to unlock audio, sensors, and wake lock.</p>
+      <p class="instruction">Hold phone flat in palm. Look at the sky.</p>
+      <p class="instruction hint">Two-finger tap to toggle Deep Red mode for LCD screens.</p>
+    </div>
+  </section>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

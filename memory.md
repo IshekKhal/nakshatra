@@ -6,7 +6,7 @@ _Persistent Architectural Decisions & Hard-Won Gotchas_
 * **iOS Safari (iOS 13+) Sensor Gate:** `DeviceOrientationEvent.requestPermission()` MUST be called synchronously within a user-initiated event listener (`touchstart`/`click`). It returns a Promise resolving to `'granted'`. Without this gesture, mobile Safari silently swallows all orientation events with zero console errors.
 * **iOS True Heading:** iOS Safari provides `event.webkitCompassHeading`, which directly represents magnetic compass degrees clockwise from North ($0^\circ - 360^\circ$). Do not invert this on iOS!
 * **Android Heading Inversion:** Android Chrome reports standard W3C `alpha` (counter-clockwise around screen Z-axis). Convert to clockwise compass heading using `(360 - alpha) % 360`.
-* **Screen Wake Lock Auto-Release:** `navigator.wakeLock.request('screen')` is automatically released by the mobile OS if the user switches apps or minimizes the tab. A document `visibilitychange` listener must immediately re-acquire the lock when `document.visibilityState === 'visible'`.
+* **Screen Wake Lock Auto-Release & WebKit Transient Gate:** `navigator.wakeLock.request('screen')` is automatically released by the mobile OS if the user switches apps or minimizes the tab. A document `visibilitychange` listener immediately re-acquires the lock when `document.visibilityState === 'visible'`. On iOS Safari 16.4+, if headless re-acquisition fails with `NotAllowedError` due to expired user activation, register a one-time `pointerdown` listener to re-acquire seamlessly on the user's next screen contact.
 * **Web Audio Autoplay Suspension:** Mobile browsers initialize `AudioContext` in `'suspended'` state. The initial welcome tap must call `await audioContext.resume()`, which permanently unlocks audio playback for the session.
 
 ## 2. Biological Optics & Display Physics
@@ -15,6 +15,7 @@ _Persistent Architectural Decisions & Hard-Won Gotchas_
   1. Palm/waist ergonomics keeping the screen physically outside the user's line of sight ($>60^\circ$ below visual axis).
   2. Deep Monochromatic Red Mode toggle (`#1a0000`), as human rod cells have zero sensitivity above $650\text{nm}$.
   3. Prompting user to lower hardware brightness or hold the screen face-down.
+* **Device Pixel Ratio (DPR) Buffer Scaling:** Scale internal canvas resolution with `Math.floor(width * devicePixelRatio)` while retaining CSS viewport styling to ensure crisp rendering on high-density Retina/AMOLED displays without blurriness.
 
 ## 3. Mathematical & Calibration Invariants
 * **Rooftop Steel Rebar Distortion:** Concrete rooftop reinforcement steel pulls compass headings by $15^\circ - 45^\circ$. Calibrating against the Moon (or sunset horizon) establishes the true astronomical azimuth offset: $\Delta\text{Az} = (\text{Az}_{\text{true}} - \text{Heading}_{\text{sensor}} + 360) \pmod{360}$.
@@ -27,5 +28,6 @@ _Persistent Architectural Decisions & Hard-Won Gotchas_
 
 ## 4. Operational Protocol
 * All Sub-Chat execution prompts are written directly to `prompt.txt` in pure plain text (no markdown headers, no bold/italics, no ASCII dividers).
-* Sub-Chats must write code, install dependencies, run automated tests in their shell, and report back raw execution logs.
-* Master Chat audits output against criteria, updates documentation, and writes the next phase prompt into `prompt.txt`.
+* Sub-Chats must conduct first-principles online research via `agent-reach` without bias towards previous documentation, opting for better and latest stacks whenever appropriate.
+* Sub-Chats must write code, install dependencies, run automated tests in their shell, report back raw execution logs, and update `progress.md` and `memory.md` upon completion.
+* Master Chat audits output against criteria, updates `MASTER_BUILD_LOG.md`, maintains architectural specifications, and writes the next phase prompt into `prompt.txt`.
