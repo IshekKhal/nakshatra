@@ -1,0 +1,55 @@
+# Project Scotopic (AstroWhisper) — Progress Tracker
+
+_Updated: October 7, 2026 | Session 1 — Architecture & Phase 1 Launch_
+
+## Client-Side Execution Roadmap Status
+
+- [ ] **Client Phase 1: Zero-Lumen Scaffolding & Optical Display Core**
+  - [x] Architectural specification & execution prompt authoring in `prompt.txt`.
+  - [ ] PWA manifest (`manifest.json`), viewport config, standalone black-translucent status bar.
+  - [ ] OLED `#000000` canvas (0.000 nits) and two-finger toggle for budget LCD Deep Red mode (`#1a0000`, $\lambda > 650\text{ nm}$).
+  - [ ] Screen Wake Lock manager (`src/wake_lock.js`) with visibility change & iOS touch fallback re-acquisition.
+  - [ ] Single-pixel sub-threshold status dot (`#2b0000` standby / `#880000` locked).
+  - [ ] Initial low-contrast deep red welcome overlay unlocking permissions on first touch.
+  - [ ] Automated unit test suite (`tests/wake_lock.test.js`, `tests/display.test.js`) passing 100%.
+
+- [ ] **Client Phase 2: Sensor Tracking, Normalization & Calibration Math**
+  - [ ] 50Hz `DeviceOrientationEvent` tracking with cross-platform heading normalization (iOS `webkitCompassHeading` vs Android Cartesian inversion `(360 - alpha) % 360`).
+  - [ ] Exponential low-pass smoothing filter ($\alpha=0.15$) with shortest-angle delta wrapping `((target - source + 180) % 360) - 180`.
+  - [ ] Single-tap Moon / horizon magnetic rebar offset calibration ($\Delta\text{Az} = (\text{Az}_{\text{true}} - \text{Heading}_{\text{sensor}} + 360) \pmod{360}$).
+  - [ ] Single-tap rooftop railing skyline elevation cutoff calibration ($\text{Alt}_{\text{skyline}}$).
+  - [ ] Automated client unit tests verifying angle wrapping, filter convergence, and rebar arithmetic.
+
+- [ ] **Client Phase 3: Local Astronomy Engine & Celestial Catalogs**
+  - [ ] `astronomy-engine` integration for real-time horizontal coordinates of Moon, Sun, 8 planets + Pluto.
+  - [ ] 88 IAU constellation boundary detection and 30 brightest visual navigation stars catalog.
+  - [ ] Messier deep-sky catalog (Andromeda M31, Orion M42, Pleiades M45) and October Orionids meteor radiant.
+  - [ ] Spherical Law of Cosines separation angle $\theta$, $10.0^\circ$ acceptance cone, $1.20\text{s}$ dwell debounce, $14.0^\circ$ hysteresis hold.
+
+- [ ] **Client Phase 4: Acoustic Proximity Beacon & Audio Stream Integration**
+  - [ ] Web Audio API dual-oscillator acoustic proximity beacon ($220\text{Hz} \to 440\text{Hz}$ pitch ramp as $\theta \to 10^\circ$).
+  - [ ] Target lock chime with smooth gain envelope.
+  - [ ] Streaming chunked HTTP audio receiver with IndexedDB offline audio cache fallback.
+
+- [ ] **Client Phase 5: Client Orchestration & Automated Test Verification**
+  - [ ] State machine orchestrating Welcome $\to$ Rebar Calibration $\to$ Skyline Calibration $\to$ Stargazing.
+  - [ ] Full end-to-end client unit test suite execution and verification.
+
+## Cloud Backend & Field Integration Roadmap
+
+- [ ] **Backend Phase 1: Microclimate & Seeing Prediction Engine (Prior Labs TabPFN)**
+  - [ ] FastAPI backend service on Render with Sentry distributed tracing middleware.
+  - [ ] Open-Meteo hourly meteorological ingestion stream.
+  - [ ] Prior Labs `TabPFNRegressor` in-context fitting for Pickering Seeing Index (1-10) and cloud extinction quantiles ($q=0.10, 0.50, 0.90$).
+  - [ ] Where The ISS At? satellite orbit telemetry integration.
+
+- [ ] **Backend Phase 2: Landmark Star-Hopper (DeepMind Gemma) & Whispered Voice Stream (ElevenLabs)**
+  - [ ] DeepMind Gemma 4 prompt engine turning deterministic Alt/Az into body-relative turns and hand-width directions.
+  - [ ] ElevenLabs Turbo v2.5 streaming voice adapter delivering first audio chunk in $<280\text{ms}$.
+  - [ ] Chunked HTTP audio streaming to mobile client with autonomous offline audio cache fallback.
+
+- [ ] **Integration & Submission Phase: Field Benchmarking & DEV.to Submission**
+  - [ ] Sentry span latency budget verification ($<350\text{ms}$ end-to-end).
+  - [ ] 10:00 PM rooftop field testing and verification of zero rhodopsin photobleaching.
+  - [ ] 20-second authentic outdoor video recording.
+  - [ ] Drafting and staging the winning DEV.to submission post.

@@ -1,0 +1,7 @@
+# Documentation & Sensitive files
+/docs/*
+
+
+*.txt
+.env*
+!.env.example
