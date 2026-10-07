@@ -15,12 +15,27 @@
   <div id="status-dot" aria-hidden="true"></div>
   <canvas id="scotopic-canvas" aria-label="Scotopic Zero-Lumen Canvas"></canvas>
 
-  <section id="welcome-overlay" role="dialog" aria-modal="true" aria-label="Welcome Instructions">
+  <section id="welcome-overlay" role="dialog" aria-modal="true" aria-label="Calibration and Setup Instructions">
     <div class="instructions-card">
-      <h1 class="title">Scotopic: Eyes Up Stargazing</h1>
-      <p class="instruction">Tap anywhere to unlock audio, sensors, and wake lock.</p>
-      <p class="instruction">Hold phone flat in palm. Look at the sky.</p>
-      <p class="instruction hint">Two-finger tap to toggle Deep Red mode for LCD screens.</p>
+      <h1 class="title" id="overlay-title">Scotopic: Eyes Up Stargazing</h1>
+
+      <div id="step-welcome" class="calibration-step active">
+        <p class="instruction">Tap anywhere to unlock audio, sensors, and wake lock.</p>
+        <p class="instruction">Hold phone flat in palm. Look at the sky.</p>
+        <p class="instruction hint">Two-finger tap toggles Deep Red mode for LCD screens.</p>
+      </div>
+
+      <div id="step-rebar" class="calibration-step" style="display: none;">
+        <p class="step-badge">Calibration Step 1 of 2</p>
+        <p class="instruction highlight">Point top of phone at the Moon (or sunset horizon) and tap once.</p>
+        <p class="instruction hint">Compensates for rooftop concrete rebar magnetic distortion.</p>
+      </div>
+
+      <div id="step-skyline" class="calibration-step" style="display: none;">
+        <p class="step-badge">Calibration Step 2 of 2</p>
+        <p class="instruction highlight">Tilt phone to match your roof railing or tree line and tap once.</p>
+        <p class="instruction hint">Establishes your local horizon obstruction cutoff.</p>
+      </div>
     </div>
   </section>
 

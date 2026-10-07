@@ -1,6 +1,6 @@
 # Project Scotopic (AstroWhisper) — Progress Tracker
 
-_Updated: October 7, 2026 | Session 2 — Phase 4 Acoustic Proximity Beacon & Audio Stream Integration Complete_
+_Updated: October 7, 2026 | Session 2 — Phase 5 Client Orchestration & Automated Test Verification Complete_
 
 ## Client-Side Execution Roadmap Status
 
@@ -33,9 +33,11 @@ _Updated: October 7, 2026 | Session 2 — Phase 4 Acoustic Proximity Beacon & Au
   - [x] Streaming chunked HTTP audio receiver with IndexedDB offline audio cache fallback.
   - [x] Automated client unit test suites (`tests/acoustic_beacon.test.js`, `tests/audio_stream.test.js`) passing 100% (46/46 client tests passing).
 
-- [ ] **Client Phase 5: Client Orchestration & Automated Test Verification**
-  - [ ] State machine orchestrating Welcome $\to$ Rebar Calibration $\to$ Skyline Calibration $\to$ Stargazing.
-  - [ ] Full end-to-end client unit test suite execution and verification.
+- [x] **Client Phase 5: Client Orchestration & Automated Test Verification**
+  - [x] State machine orchestrating Welcome $\to$ Rebar Calibration $\to$ Skyline Calibration $\to$ Stargazing (`src/orchestrator.js`).
+  - [x] Progressive scotopic calibration overlay with step badges and guidance (`index.html`, `css/styles.css`).
+  - [x] Gesture bindings for two-finger LCD toggle, calibration taps, and three-finger / 2-second recalibration (`src/app.js`).
+  - [x] Full end-to-end client unit test suite execution and verification (54/54 tests passing across 7 suites in `tests/orchestration.test.js`).
 
 ## Cloud Backend & Field Integration Roadmap
 
