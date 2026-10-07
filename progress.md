@@ -1,8 +1,8 @@
 # Project Scotopic (AstroWhisper) — Progress Tracker
 
-_Updated: October 7, 2026 | Session 2 — Master Chat 1 Handoff Approved; Master Chat 2 Backend Initialized_
+_Updated: October 7, 2026 | Session 3 — Backend Phase 1 Completed; 18 Automated Pytest Tests Passing_
 
-> Status Note: Master Chat 1 has completed all 5 client phases with 54 passing automated tests in `client/tests/`. Master Chat 2 is now initialized as Cloud Backend and AI Integration Architect.
+> Status Note: Master Chat 1 has completed all 5 client phases with 54 passing automated tests in `client/tests/`. Master Chat 2 / Sub-Chat 1 has completed Backend Phase 1 with 18 passing automated tests in `backend/tests/` (100% pass rate).
 
 ## Client-Side Execution Roadmap Status
 
@@ -43,11 +43,12 @@ _Updated: October 7, 2026 | Session 2 — Master Chat 1 Handoff Approved; Master
 
 ## Cloud Backend & Field Integration Roadmap
 
-- [ ] **Backend Phase 1: Microclimate & Seeing Prediction Engine (Prior Labs TabPFN)**
-  - [ ] FastAPI backend service on Render with Sentry distributed tracing middleware.
-  - [ ] Open-Meteo hourly meteorological ingestion stream.
-  - [ ] Prior Labs `TabPFNRegressor` in-context fitting for Pickering Seeing Index (1-10) and cloud extinction quantiles ($q=0.10, 0.50, 0.90$).
-  - [ ] Where The ISS At? satellite orbit telemetry integration.
+- [x] **Backend Phase 1: Microclimate & Seeing Prediction Engine (Prior Labs TabPFN)**
+  - [x] FastAPI production service gateway with CORS, typed config, and `/health` probe endpoint.
+  - [x] Open-Meteo hourly meteorological ingestion stream with 600s TTL in-memory coordinate cache.
+  - [x] Prior Labs `TabPFNRegressor` in-context fitting for Pickering Seeing Index (1-10) and cloud extinction quantiles ($q=0.10, 0.50, 0.90$) with resilient local RandomForest + physics regression fallback.
+  - [x] Where The ISS At? satellite orbit telemetry integration with topocentric spherical geometry flyover pass predictor and circular Keplerian offline fallback.
+  - [x] Automated backend pytest test suites (`test_microclimate.py`, `test_satellites.py`, `test_gateway.py`) passing 100% (18/18 tests).
 
 - [ ] **Backend Phase 2: Landmark Star-Hopper (DeepMind Gemma) & Whispered Voice Stream (ElevenLabs)**
   - [ ] DeepMind Gemma 4 prompt engine turning deterministic Alt/Az into body-relative turns and hand-width directions.
