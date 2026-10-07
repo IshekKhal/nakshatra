@@ -9,6 +9,8 @@ import { DisplayController } from './display.js';
 import { OrientationTracker } from './sensors.js';
 import { SkylineManager } from './skyline.js';
 import { EphemerisEngine } from './ephemeris.js';
+import { AcousticBeacon } from './acoustic_beacon.js';
+import { AudioStreamReceiver } from './audio_stream.js';
 
 export function initApp() {
   const canvas = document.getElementById('scotopic-canvas');
@@ -20,6 +22,8 @@ export function initApp() {
   const orientationTracker = new OrientationTracker();
   const skylineManager = new SkylineManager();
   const ephemerisEngine = new EphemerisEngine();
+  const acousticBeacon = new AcousticBeacon();
+  const audioStreamReceiver = new AudioStreamReceiver();
 
   // Initial sizing and rendering
   displayController.resize();
@@ -56,7 +60,10 @@ export function initApp() {
       // 1. Acquire Screen Wake Lock
       await wakeLockManager.acquireLock();
 
-      // 2. Obtain Geolocation for Topocentric Observer
+      // 2. Permanently unlock Web Audio API for session
+      await acousticBeacon.unlock();
+
+      // 3. Obtain Geolocation for Topocentric Observer
       if (typeof navigator !== 'undefined' && navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -73,9 +80,11 @@ export function initApp() {
         );
       }
 
-      // 3. Request Sensor Tracking Permission (iOS Safari gate)
+      // 4. Request Sensor Tracking Permission (iOS Safari gate)
       const sensorGranted = await orientationTracker.requestPermission();
       if (sensorGranted) {
+        let wasLocked = false;
+
         orientationTracker.startTracking((az, alt, rawAz, rawAlt) => {
           const dwellState = ephemerisEngine.updateDwellState(
             az,
@@ -84,17 +93,26 @@ export function initApp() {
             skylineManager
           );
 
-          if (dwellState.isLocked) {
+          // Update proximity audio feedback
+          if (dwellState.separationAngle !== undefined && dwellState.separationAngle !== null) {
+            acousticBeacon.updateProximity(dwellState.separationAngle);
+          }
+
+          // Target lock transition state machine
+          if (dwellState.isLocked && !wasLocked) {
+            wasLocked = true;
             displayController.setStatusDot('locked');
-          } else {
+            acousticBeacon.playLockChime();
+            acousticBeacon.setDucked(true);
+            if (dwellState.target) {
+              audioStreamReceiver.playTargetNarration(dwellState.target);
+            }
+          } else if (!dwellState.isLocked && wasLocked) {
+            wasLocked = false;
             displayController.setStatusDot('standby');
+            acousticBeacon.setDucked(false);
           }
         });
-      }
-
-      // 4. AudioContext resume hook placeholder (for Phase 4)
-      if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
-        // Reserved hook for audio context unlock in subsequent phase
       }
 
       // 5. Set status dot to standby (#2b0000)
@@ -120,6 +138,8 @@ export function initApp() {
     orientationTracker,
     skylineManager,
     ephemerisEngine,
+    acousticBeacon,
+    audioStreamReceiver,
     calibrateAnchor,
     calibrateSkyline
   };

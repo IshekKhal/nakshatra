@@ -55,9 +55,16 @@ _Initialized: October 7, 2026 | Session 1 — Architecture & Phase 1 Preparation
    - Verified native browser ESM resolution using `<script type="importmap">` with zero bundlers.
    - Synchronized `docs/SYSTEM_ARCHITECTURE.md`, `progress.md`, and `memory.md`.
    - Transitioned to Phase 4: Acoustic Proximity Beacon & Audio Stream Integration.
-8. **Phase 4 Preparation: Acoustic Proximity Beacon & Audio Stream Integration:**
-   - Established Web Audio API dual-oscillator acoustic proximity beacon specifications (fundamental sine wave ramping $220\text{Hz} \to 440\text{Hz}$, harmonic triangle wave at $1.5\times$ perfect fifth $330\text{Hz} \to 660\text{Hz}$, smooth gain ramp $0.00 \to 0.25$ over $\theta \in [25^\circ, 10^\circ]$).
-   - Formulated anti-click gain scheduling protocol (`setTargetAtTime`, gain anchoring with `setValueAtTime`).
-   - Specified target lock confirmation chime (C5 $523.25\text{Hz}$ + E5 $659.25\text{Hz}$ exponential decay envelope) and $-18\text{dB}$ ambient ducking control.
-   - Formulated streaming binary audio receiver architecture with IndexedDB fallback cache for top 20 celestial objects.
-   - Formulated automated unit test specifications in `tests/acoustic_beacon.test.js` and `tests/audio_stream.test.js`.
+8. **Phase 4 Verification & Audio Engine Quality Audit Completed:**
+   - Audited Sub-Chat 4 deliverables in `client/`: `src/acoustic_beacon.js`, `src/audio_stream.js`, `src/app.js`, `tests/acoustic_beacon.test.js`, and `tests/audio_stream.test.js`.
+   - Executed live automated test suite (`node --test tests/*.test.js`): 46/46 tests passed in 975ms across all 6 test suites with zero errors, zero skipped tests, and zero mock stubs in production files.
+   - Verified dual-oscillator acoustic proximity beacon: fundamental sine wave ramping $220.0\text{Hz} \to 440.0\text{Hz}$ and triangle harmonic at $1.5\times$ Perfect Fifth ($330.0\text{Hz} \to 660.0\text{Hz}$), with proximity gain ramping $0.00 \to 0.25$ ($-12\text{dB}$) over $\theta \in [25.0^\circ, 10.0^\circ]$.
+   - Verified anti-click gain scheduling: parameter anchoring with `setValueAtTime` and smooth transitions using `setTargetAtTime(target, time, 0.04)`.
+   - Verified target lock confirmation chime (C5 $523.25\text{Hz}$ + E5 $659.25\text{Hz}$ dual sine chord with exponential decay envelope $\tau = 0.15\text{s}$) and $-18\text{dB}$ ambient audio ducking.
+   - Verified streaming audio receiver with $400\text{ms}$ `AbortController` latency watchdog and IndexedDB fallback cache populated with 16-bit PCM RIFF/WAV buffers for 11 primary celestial targets.
+   - Synchronized `docs/SYSTEM_ARCHITECTURE.md`, `memory.md`, and `progress.md`.
+   - Transitioned to Phase 5: Client Orchestration & Automated Test Verification.
+9. **Phase 5 Preparation: Client Orchestration & Automated Test Verification:**
+   - Designed full client state machine coordinating session lifecycle: `WELCOME` $\to$ `CALIBRATING_REBAR` $\to$ `CALIBRATING_SKYLINE` $\to$ `STARGAZING`.
+   - Formulated audio/visual cue sequences for single-tap Moon/horizon rebar offset anchoring and rooftop skyline elevation capture.
+   - Formulated end-to-end client integration test suite covering state transitions, recalibration triggers, and degradation safety.

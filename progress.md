@@ -1,6 +1,6 @@
 # Project Scotopic (AstroWhisper) — Progress Tracker
 
-_Updated: October 7, 2026 | Session 2 — Phase 3 Local Astronomy Engine & Celestial Catalogs Complete_
+_Updated: October 7, 2026 | Session 2 — Phase 4 Acoustic Proximity Beacon & Audio Stream Integration Complete_
 
 ## Client-Side Execution Roadmap Status
 
@@ -27,10 +27,11 @@ _Updated: October 7, 2026 | Session 2 — Phase 3 Local Astronomy Engine & Celes
   - [x] Spherical Law of Cosines separation angle $\theta$, $10.0^\circ$ acceptance cone, $1.20\text{s}$ dwell debounce, $14.0^\circ$ hysteresis hold.
   - [x] Automated unit test suites (`tests/celestial_catalog.test.js`, `tests/ephemeris.test.js`) passing 100% (35/35 client tests passing).
 
-- [ ] **Client Phase 4: Acoustic Proximity Beacon & Audio Stream Integration**
-  - [ ] Web Audio API dual-oscillator acoustic proximity beacon ($220\text{Hz} \to 440\text{Hz}$ pitch ramp as $\theta \to 10^\circ$).
-  - [ ] Target lock chime with smooth gain envelope.
-  - [ ] Streaming chunked HTTP audio receiver with IndexedDB offline audio cache fallback.
+- [x] **Client Phase 4: Acoustic Proximity Beacon & Audio Stream Integration**
+  - [x] Web Audio API dual-oscillator acoustic proximity beacon ($220\text{Hz} \to 440\text{Hz}$ pitch ramp as $\theta \to 10^\circ$).
+  - [x] Target lock chime with smooth gain envelope.
+  - [x] Streaming chunked HTTP audio receiver with IndexedDB offline audio cache fallback.
+  - [x] Automated client unit test suites (`tests/acoustic_beacon.test.js`, `tests/audio_stream.test.js`) passing 100% (46/46 client tests passing).
 
 - [ ] **Client Phase 5: Client Orchestration & Automated Test Verification**
   - [ ] State machine orchestrating Welcome $\to$ Rebar Calibration $\to$ Skyline Calibration $\to$ Stargazing.
