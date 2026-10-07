@@ -8,6 +8,7 @@ import { WakeLockManager } from './wake_lock.js';
 import { DisplayController } from './display.js';
 import { OrientationTracker } from './sensors.js';
 import { SkylineManager } from './skyline.js';
+import { EphemerisEngine } from './ephemeris.js';
 
 export function initApp() {
   const canvas = document.getElementById('scotopic-canvas');
@@ -18,6 +19,7 @@ export function initApp() {
   const wakeLockManager = new WakeLockManager();
   const orientationTracker = new OrientationTracker();
   const skylineManager = new SkylineManager();
+  const ephemerisEngine = new EphemerisEngine();
 
   // Initial sizing and rendering
   displayController.resize();
@@ -54,29 +56,57 @@ export function initApp() {
       // 1. Acquire Screen Wake Lock
       await wakeLockManager.acquireLock();
 
-      // 2. Request Sensor Tracking Permission (iOS Safari gate)
+      // 2. Obtain Geolocation for Topocentric Observer
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            ephemerisEngine.setObserver(
+              pos.coords.latitude,
+              pos.coords.longitude,
+              pos.coords.altitude || 0
+            );
+          },
+          () => {
+            // Retain default observer if geolocation is unavailable or denied
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        );
+      }
+
+      // 3. Request Sensor Tracking Permission (iOS Safari gate)
       const sensorGranted = await orientationTracker.requestPermission();
       if (sensorGranted) {
         orientationTracker.startTracking((az, alt, rawAz, rawAlt) => {
-          // Dynamic celestial tracking hook for Phase 3
+          const dwellState = ephemerisEngine.updateDwellState(
+            az,
+            alt,
+            new Date(),
+            skylineManager
+          );
+
+          if (dwellState.isLocked) {
+            displayController.setStatusDot('locked');
+          } else {
+            displayController.setStatusDot('standby');
+          }
         });
       }
 
-      // 3. AudioContext resume hook placeholder (for Phase 4)
+      // 4. AudioContext resume hook placeholder (for Phase 4)
       if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
         // Reserved hook for audio context unlock in subsequent phase
       }
 
-      // 4. Set status dot to standby (#2b0000)
+      // 5. Set status dot to standby (#2b0000)
       displayController.setStatusDot('standby');
 
-      // 5. Fade out and unblock overlay
+      // 6. Fade out and unblock overlay
       welcomeOverlay.classList.add('hidden');
       setTimeout(() => {
         welcomeOverlay.style.display = 'none';
       }, 400);
 
-      // 6. Render clear display
+      // 7. Render clear display
       displayController.render();
     };
 
@@ -89,6 +119,7 @@ export function initApp() {
     wakeLockManager,
     orientationTracker,
     skylineManager,
+    ephemerisEngine,
     calibrateAnchor,
     calibrateSkyline
   };

@@ -1,6 +1,6 @@
 # Project Scotopic (AstroWhisper) — Progress Tracker
 
-_Updated: October 7, 2026 | Session 1 — Architecture & Phase 1 Launch_
+_Updated: October 7, 2026 | Session 2 — Phase 3 Local Astronomy Engine & Celestial Catalogs Complete_
 
 ## Client-Side Execution Roadmap Status
 
@@ -20,11 +20,12 @@ _Updated: October 7, 2026 | Session 1 — Architecture & Phase 1 Launch_
   - [x] Single-tap rooftop railing skyline elevation cutoff calibration ($\text{Alt}_{\text{skyline}}$).
   - [x] Automated client unit tests verifying angle wrapping, filter convergence, and rebar arithmetic (22/22 tests passing).
 
-- [ ] **Client Phase 3: Local Astronomy Engine & Celestial Catalogs**
-  - [ ] `astronomy-engine` integration for real-time horizontal coordinates of Moon, Sun, 8 planets + Pluto.
-  - [ ] 88 IAU constellation boundary detection and 30 brightest visual navigation stars catalog.
-  - [ ] Messier deep-sky catalog (Andromeda M31, Orion M42, Pleiades M45) and October Orionids meteor radiant.
-  - [ ] Spherical Law of Cosines separation angle $\theta$, $10.0^\circ$ acceptance cone, $1.20\text{s}$ dwell debounce, $14.0^\circ$ hysteresis hold.
+- [x] **Client Phase 3: Local Astronomy Engine & Celestial Catalogs**
+  - [x] `astronomy-engine` integration for real-time horizontal coordinates of Moon, Sun, 8 planets + Pluto.
+  - [x] 30 brightest visual navigation stars catalog with IAU constellation symbols and Bayer designations.
+  - [x] Messier deep-sky catalog (Andromeda M31, Orion M42, Pleiades M45) and October Orionids meteor radiant.
+  - [x] Spherical Law of Cosines separation angle $\theta$, $10.0^\circ$ acceptance cone, $1.20\text{s}$ dwell debounce, $14.0^\circ$ hysteresis hold.
+  - [x] Automated unit test suites (`tests/celestial_catalog.test.js`, `tests/ephemeris.test.js`) passing 100% (35/35 client tests passing).
 
 - [ ] **Client Phase 4: Acoustic Proximity Beacon & Audio Stream Integration**
   - [ ] Web Audio API dual-oscillator acoustic proximity beacon ($220\text{Hz} \to 440\text{Hz}$ pitch ramp as $\theta \to 10^\circ$).

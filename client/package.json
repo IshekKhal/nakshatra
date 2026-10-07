@@ -11,5 +11,8 @@
     "scotopic",
     "zero-lumen"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "astronomy-engine": "^2.1.19"
+  }
 }
