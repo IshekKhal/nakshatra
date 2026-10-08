@@ -198,6 +198,33 @@ export class OrientationTracker {
   }
 
   /**
+   * 1-Tap Moon calibration alias for Phase 0.
+   * @param {number} trueMoonAzimuth
+   * @returns {number}
+   */
+  calibrateMoon(trueMoonAzimuth) {
+    return this.calibrateRebar(trueMoonAzimuth);
+  }
+
+  /**
+   * Checks if device is held flat in palm at chest level (pitch <= threshold).
+   * @param {number} [pitchThreshold=25.0] Maximum pitch angle for flat hold
+   * @returns {boolean}
+   */
+  isHeldFlat(pitchThreshold = 25.0) {
+    return this.smoothedAltitude <= pitchThreshold;
+  }
+
+  /**
+   * Checks if device is held against chin or tilted upward (pitch > threshold).
+   * @param {number} [pitchThreshold=25.0]
+   * @returns {boolean}
+   */
+  isAtChin(pitchThreshold = 25.0) {
+    return this.smoothedAltitude > pitchThreshold;
+  }
+
+  /**
    * Returns corrected azimuth incorporating magnetic rebar offset.
    * @returns {number}
    */
@@ -213,3 +240,4 @@ export class OrientationTracker {
     return this.smoothedAltitude;
   }
 }
+

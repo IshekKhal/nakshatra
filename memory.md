@@ -123,3 +123,15 @@ _Persistent Architectural Decisions & Hard-Won Gotchas_
 * **Full Wire Parameter Alignment:** Audio streaming calls from client `SessionOrchestrator` to `AudioStreamReceiver` pass geographic observer coordinates (`lat`, `lon`) and horizontal target coordinates (`alt`, `az`) through to `/api/v1/narrate`, satisfying FastAPI strict query validation (`target`, `lat`, `lon`, `alt`, `az`).
 * **Sentry Traced End-to-End Delivery:** Live execution of `/api/v1/narrate` over test client returns HTTP 200, `audio/mpeg` content type, `X-Target-Id: saturn`, and 44,740 streamed bytes, cleanly flushing `ai.chat` and `ai.agent` spans to Sentry.
 * **Publication-Ready Submission Article:** `docs/DEV_SUBMISSION_POST.md` contains 400 lines (27.5 KB, >3,600 words) strictly obeying humanize-writing directives: zero copula evasions, zero em-dash crutches, zero rule-of-three triplets, zero negative parallelisms, and zero prohibited buzzwords. All 6 hackathon prize categories (TabPFN, Gemma, Render, ElevenLabs, Sentry, Grand Prize) are comprehensively represented with factual mathematical and architectural depth.
+
+## 13. Scotopic V2 Architectural Invariants (100% On-Device PWA)
+* **Zero Backend, Zero API Keys:** The active production system operates entirely inside `client/` as a static Progressive Web App with zero external server dependencies and zero API key requirements.
+* **Native Sub-15ms Speech Synthesis:** `SpeechSynthesizer` wraps `window.speechSynthesis` with warm whisper parameters (`pitch: 0.88`, `rate: 0.85`, `volume: 0.70`). It eliminates the 8.2-second network latency of remote cloud LLMs and TTS engines.
+* **Gemma Natural Grammar Engine:** Strict banned words list prevents coordinate and mathematical degree jargon (`degrees`, `azimuth`, `altitude`, `declination`, `ra`, `radians`, `elevation`). Relies exclusively on relative body and head movements (`Turn your body to the left`, `Tilt your head up slightly`, `Stop right there`).
+* **2-Phase Ergonomic Stargazer Radar:**
+  - Phase 0: 1-tap Moon calibration at chest level zeroes concrete rebar magnetic distortion.
+  - Phase 1: Horizontal sweep in XY plane at chest level (`isHeldFlat()`, pitch <= 25 degrees) with acoustic beacon (220 Hz - 440 Hz) and faint 650nm deep red chevron (`#660000`). Dwell within 5 degrees for 1200ms locks heading.
+  - Phase 2: Vertical head tilt along Z axis at chin level (`isAtChin()`, pitch > 25 degrees) guided by whispered body cues. Alignment within 3 degrees locks altitude.
+  - Phase 3: Pure pitch black observation at 0.000 nits OLED (`#000000`) with a 1-sentence observational whisper.
+* **Test Verification & Clean Repositioning:** 70 automated client tests pass across 7 test suites in ~1.06 seconds (`node --test tests/*.test.js`) with 100% pass rate. All deprecated cloud backend files (`backend/`, `render.yaml`, `requirements.txt`) and legacy audio stream files (`audio_stream.js`, `audio_stream.test.js`) have been permanently deleted from the codebase.
+

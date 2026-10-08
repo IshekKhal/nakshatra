@@ -210,6 +210,37 @@ export class AcousticBeacon {
   }
 
   /**
+   * Updates beacon frequencies and proximity gain according to horizontal azimuth delta.
+   * Tailored for Phase 1 (XY plane horizontal sweep):
+   * - |deltaAz| > 30.0 deg: gain = 0.00 (silent)
+   * - |deltaAz| <= 5.0 deg: f = 440.0 Hz, f_harmonic = 660.0 Hz, gain = 0.25 (-12 dB)
+   * - |deltaAz| in [5.0, 30.0]:
+   *     ratio = (|deltaAz| - 5.0) / 25.0
+   *     f(deltaAz) = 440.0 - ratio * 220.0 Hz
+   *     f_harmonic = 1.5 * f
+   *     g(deltaAz) = 0.25 * (1.0 - ratio)
+   *
+   * @param {number} deltaAz Signed or unsigned azimuth difference in degrees
+   * @returns {{ fundamentalFreq: number, harmonicFreq: number, gain: number }}
+   */
+  updateSectorProximity(deltaAz) {
+    if (deltaAz === null || deltaAz === undefined || isNaN(deltaAz)) {
+      return this.updateProximity(Infinity);
+    }
+    const absDelta = Math.abs(Number(deltaAz));
+    if (absDelta > 30.0) {
+      return this.updateProximity(Infinity);
+    }
+    if (absDelta <= 5.0) {
+      return this.updateProximity(10.0); // Equivalent to full locked proximity
+    }
+    // Map [5.0, 30.0] into equivalent theta [10.0, 25.0]
+    const ratio = (absDelta - 5.0) / 25.0; // 0.0 at 5 deg, 1.0 at 30 deg
+    const equivalentTheta = 10.0 + ratio * 15.0;
+    return this.updateProximity(equivalentTheta);
+  }
+
+  /**
    * Plays the two-tone target lock confirmation chime:
    * Tone 1: C5 at 523.25 Hz
    * Tone 2: E5 at 659.25 Hz

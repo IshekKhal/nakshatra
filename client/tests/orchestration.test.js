@@ -5,7 +5,6 @@ import { OrientationTracker } from '../src/sensors.js';
 import { SkylineManager } from '../src/skyline.js';
 import { EphemerisEngine } from '../src/ephemeris.js';
 import { AcousticBeacon } from '../src/acoustic_beacon.js';
-import { AudioStreamReceiver } from '../src/audio_stream.js';
 import { DisplayController } from '../src/display.js';
 import { WakeLockManager } from '../src/wake_lock.js';
 
@@ -287,10 +286,10 @@ describe('SessionOrchestrator', () => {
       }
     };
 
-    let narratedTarget = null;
-    const mockAudioStream = {
-      playTargetNarration(target) {
-        narratedTarget = target;
+    let whisperedTarget = null;
+    const mockSpeech = {
+      whisper(text) {
+        whisperedTarget = text;
       }
     };
 
@@ -298,7 +297,7 @@ describe('SessionOrchestrator', () => {
       ephemerisEngine: mockEphemeris,
       acousticBeacon: mockBeacon,
       displayController: mockDisplay,
-      audioStreamReceiver: mockAudioStream
+      speechSynthesizer: mockSpeech
     });
 
     await orchestrator.handleFirstTouch();
@@ -309,14 +308,14 @@ describe('SessionOrchestrator', () => {
     orchestrator.handleSensorFrame(100.0, 30.0);
     assert.strictEqual(statusDot, 'standby');
     assert.strictEqual(isDucked, false);
-    assert.strictEqual(narratedTarget, null);
+    assert.strictEqual(whisperedTarget, null);
 
     // Frame 2: Lock transition edge
     currentLocked = true;
     orchestrator.handleSensorFrame(100.0, 30.0);
     assert.strictEqual(statusDot, 'locked');
     assert.strictEqual(isDucked, true);
-    assert.strictEqual(narratedTarget.name, 'Jupiter');
+    assert.ok(whisperedTarget !== null);
 
     // Frame 3: Lock break edge
     currentLocked = false;
@@ -326,10 +325,10 @@ describe('SessionOrchestrator', () => {
   });
 
   test('Test 7: triggerRecalibration halts audio and resets state to CALIBRATING_REBAR', async () => {
-    let audioStreamStopped = false;
-    const mockAudioStream = {
+    let speechStopped = false;
+    const mockSpeech = {
       stop() {
-        audioStreamStopped = true;
+        speechStopped = true;
       }
     };
 
@@ -365,7 +364,7 @@ describe('SessionOrchestrator', () => {
     const orchestrator = new SessionOrchestrator({
       orientationTracker: mockTracker,
       acousticBeacon: mockBeacon,
-      audioStreamReceiver: mockAudioStream,
+      speechSynthesizer: mockSpeech,
       displayController: mockDisplay
     });
 
@@ -382,7 +381,7 @@ describe('SessionOrchestrator', () => {
     assert.strictEqual(orchestrator.getState(), APP_STATES.CALIBRATING_REBAR);
     assert.strictEqual(orchestrator.isCalibrated(), false);
     assert.strictEqual(orchestrator.getCurrentTarget(), null);
-    assert.strictEqual(audioStreamStopped, true);
+    assert.strictEqual(speechStopped, true);
     assert.strictEqual(beaconStopped, true);
     assert.strictEqual(beaconDucked, false);
     assert.strictEqual(trackingStopped, true);
@@ -461,16 +460,12 @@ describe('SessionOrchestrator', () => {
     };
     const acousticBeacon = new AcousticBeacon({ audioContext: mockAudioContext });
 
-    let narratedTargetName = null;
-    const audioStreamReceiver = new AudioStreamReceiver({
-      fetchFn: async () => ({
-        ok: true,
-        arrayBuffer: async () => new ArrayBuffer(44)
-      })
-    });
-    audioStreamReceiver.playTargetNarration = async (target) => {
-      narratedTargetName = target.name;
-      return { success: true, source: 'network' };
+    let narratedTargetSpoken = false;
+    const mockSpeech = {
+      whisper(text) {
+        narratedTargetSpoken = true;
+      },
+      stop() {}
     };
 
     // 2. Instantiate Orchestrator
@@ -481,7 +476,7 @@ describe('SessionOrchestrator', () => {
       skylineManager,
       ephemerisEngine,
       acousticBeacon,
-      audioStreamReceiver,
+      speechSynthesizer: mockSpeech,
       navigatorRef: mockNavigator
     });
 
@@ -512,23 +507,24 @@ describe('SessionOrchestrator', () => {
     assert.strictEqual(orientationTracker.isTracking, true);
     assert.strictEqual(displayController.statusDotColor, '#2b0000'); // standby
 
-    // 6. Stargazing sensor frames: simulate looking at Jupiter
-    const jupiterCoord = ephemerisEngine.computeBodyHorizontal('Jupiter', new Date());
-    if (jupiterCoord.altitude > 0) {
-      // Send frame within 3 degrees of Jupiter
-      orchestrator.handleSensorFrame(jupiterCoord.azimuth + 2.0, jupiterCoord.altitude + 1.0);
-      assert.strictEqual(orchestrator.getCurrentTarget()?.name, 'Jupiter');
-      assert.ok(acousticBeacon.currentSeparation <= 10.0);
+    // 6. Stargazing sensor frames: simulate looking at a visible target
+    const visibleTargets = ephemerisEngine.getAllVisibleTargets(new Date(), skylineManager);
+    assert.ok(visibleTargets.length > 0);
+    const testTarget = visibleTargets[0];
 
-      // Simulate lock after continuous dwell
-      ephemerisEngine.isLocked = true;
-      ephemerisEngine.lockedTarget = jupiterCoord;
-      orchestrator.handleSensorFrame(jupiterCoord.azimuth, jupiterCoord.altitude);
+    // Send frame within 2 degrees of the visible target
+    orchestrator.handleSensorFrame(testTarget.azimuth + 1.0, testTarget.altitude + 1.0);
+    assert.strictEqual(orchestrator.getCurrentTarget()?.name, testTarget.name);
+    assert.ok(acousticBeacon.currentSeparation <= 10.0);
 
-      assert.strictEqual(displayController.statusDotColor, '#880000'); // locked
-      assert.strictEqual(acousticBeacon.getIsDucked(), true);
-      assert.strictEqual(narratedTargetName, 'Jupiter');
-    }
+    // Simulate lock after continuous dwell
+    ephemerisEngine.isLocked = true;
+    ephemerisEngine.lockedTarget = testTarget;
+    orchestrator.handleSensorFrame(testTarget.azimuth, testTarget.altitude);
+
+    assert.strictEqual(displayController.statusDotColor, '#880000'); // locked
+    assert.strictEqual(acousticBeacon.getIsDucked(), true);
+    assert.strictEqual(narratedTargetSpoken, true);
 
     // 7. Recalibration Gesture
     orchestrator.triggerRecalibration();

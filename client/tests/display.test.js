@@ -5,9 +5,33 @@ import { DisplayController } from '../src/display.js';
 function createMockCanvas(width = 300, height = 150) {
   const ctx = {
     fillStyle: '',
+    strokeStyle: '',
+    lineWidth: 1,
+    lineCap: 'butt',
+    lineJoin: 'miter',
     fillRectCalls: [],
+    pathOperations: [],
+    savedStates: 0,
     fillRect(x, y, w, h) {
       this.fillRectCalls.push({ x, y, w, h, fillStyle: this.fillStyle });
+    },
+    save() {
+      this.savedStates++;
+    },
+    restore() {
+      this.savedStates--;
+    },
+    beginPath() {
+      this.pathOperations.push({ op: 'beginPath' });
+    },
+    moveTo(x, y) {
+      this.pathOperations.push({ op: 'moveTo', x, y });
+    },
+    lineTo(x, y) {
+      this.pathOperations.push({ op: 'lineTo', x, y });
+    },
+    stroke() {
+      this.pathOperations.push({ op: 'stroke', strokeStyle: this.strokeStyle });
     }
   };
 
@@ -135,4 +159,33 @@ describe('DisplayController', () => {
     assert.strictEqual(canvas.style.width, '400px');
     assert.strictEqual(canvas.style.height, '800px');
   });
+
+  it('Test 7: drawChevron renders 650nm deep red directional cues and clearCanvas clears buffer', () => {
+    const canvas = createMockCanvas(300, 300);
+    const dot = createMockStatusDot();
+    const controller = new DisplayController(canvas, dot);
+
+    // Right chevron (delta > 5 deg)
+    controller.drawChevron(15.0, 0.7);
+    assert.strictEqual(canvas._ctx.strokeStyle, 'rgba(102, 0, 0, 0.7)');
+    const hasStroke = canvas._ctx.pathOperations.some((op) => op.op === 'stroke');
+    assert.strictEqual(hasStroke, true);
+
+    // Left chevron (delta < -5 deg)
+    canvas._ctx.pathOperations = [];
+    controller.drawChevron(-20.0, 0.5);
+    assert.strictEqual(canvas._ctx.strokeStyle, 'rgba(102, 0, 0, 0.5)');
+    assert.strictEqual(canvas._ctx.pathOperations.length >= 3, true);
+
+    // Straight ahead chevron
+    canvas._ctx.pathOperations = [];
+    controller.drawChevron(0.0, 0.9);
+    assert.strictEqual(canvas._ctx.strokeStyle, 'rgba(102, 0, 0, 0.9)');
+
+    // clearCanvas clears the display back to pure black
+    const clearColor = controller.clearCanvas();
+    assert.strictEqual(clearColor, '#000000');
+    assert.strictEqual(canvas._ctx.fillStyle, '#000000');
+  });
 });
+

@@ -11,7 +11,8 @@ import { OrientationTracker } from './sensors.js';
 import { SkylineManager } from './skyline.js';
 import { EphemerisEngine } from './ephemeris.js';
 import { AcousticBeacon } from './acoustic_beacon.js';
-import { AudioStreamReceiver } from './audio_stream.js';
+import { SpeechSynthesizer } from './speech_engine.js';
+import { GemmaEngine } from './local_gemma.js';
 import { SessionOrchestrator, APP_STATES } from './orchestrator.js';
 
 export function initApp() {
@@ -29,7 +30,8 @@ export function initApp() {
   const skylineManager = new SkylineManager();
   const ephemerisEngine = new EphemerisEngine();
   const acousticBeacon = new AcousticBeacon();
-  const audioStreamReceiver = new AudioStreamReceiver();
+  const speechSynthesizer = new SpeechSynthesizer();
+  const gemmaEngine = new GemmaEngine();
 
   // Initial sizing and rendering
   displayController.resize();
@@ -59,21 +61,26 @@ export function initApp() {
       if (stepWelcome) stepWelcome.style.display = 'block';
       if (stepRebar) stepRebar.style.display = 'none';
       if (stepSkyline) stepSkyline.style.display = 'none';
-    } else if (state === APP_STATES.CALIBRATING_REBAR) {
+    } else if (state === APP_STATES.CALIBRATING_MOON || state === APP_STATES.CALIBRATING_REBAR) {
       welcomeOverlay.classList.remove('hidden');
       welcomeOverlay.style.display = 'flex';
-      if (overlayTitle) overlayTitle.textContent = 'Calibration: Rebar Offset';
+      if (overlayTitle) overlayTitle.textContent = 'One-Tap Compass Zeroing';
       if (stepWelcome) stepWelcome.style.display = 'none';
       if (stepRebar) stepRebar.style.display = 'block';
       if (stepSkyline) stepSkyline.style.display = 'none';
     } else if (state === APP_STATES.CALIBRATING_SKYLINE) {
       welcomeOverlay.classList.remove('hidden');
       welcomeOverlay.style.display = 'flex';
-      if (overlayTitle) overlayTitle.textContent = 'Calibration: Horizon Skyline';
+      if (overlayTitle) overlayTitle.textContent = 'Rooftop Horizon Cutoff';
       if (stepWelcome) stepWelcome.style.display = 'none';
       if (stepRebar) stepRebar.style.display = 'none';
       if (stepSkyline) stepSkyline.style.display = 'block';
-    } else if (state === APP_STATES.STARGAZING) {
+    } else if (
+      state === APP_STATES.SWEEP_XY ||
+      state === APP_STATES.TILT_Z ||
+      state === APP_STATES.OBSERVING ||
+      state === APP_STATES.STARGAZING
+    ) {
       welcomeOverlay.classList.add('hidden');
       setTimeout(() => {
         welcomeOverlay.style.display = 'none';
@@ -82,7 +89,7 @@ export function initApp() {
     }
   };
 
-  // Instantiate session orchestrator
+  // Instantiate session orchestrator in V2 mode
   const orchestrator = new SessionOrchestrator({
     displayController,
     wakeLockManager,
@@ -90,7 +97,9 @@ export function initApp() {
     skylineManager,
     ephemerisEngine,
     acousticBeacon,
-    audioStreamReceiver,
+    speechSynthesizer,
+    gemmaEngine,
+    v2Mode: true,
     onStateChange: (state) => updateUIForState(state)
   });
 
@@ -109,6 +118,7 @@ export function initApp() {
       if (currentState === APP_STATES.WELCOME) {
         await orchestrator.handleFirstTouch();
       } else if (
+        currentState === APP_STATES.CALIBRATING_MOON ||
         currentState === APP_STATES.CALIBRATING_REBAR ||
         currentState === APP_STATES.CALIBRATING_SKYLINE
       ) {
@@ -124,6 +134,7 @@ export function initApp() {
     canvas.addEventListener('click', () => {
       const currentState = orchestrator.getState();
       if (
+        currentState === APP_STATES.CALIBRATING_MOON ||
         currentState === APP_STATES.CALIBRATING_REBAR ||
         currentState === APP_STATES.CALIBRATING_SKYLINE
       ) {
@@ -148,14 +159,20 @@ export function initApp() {
           clearTimeout(longPressTimer);
           longPressTimer = null;
         }
-      } else if (e.touches && e.touches.length === 1 && orchestrator.getState() === APP_STATES.STARGAZING) {
+      } else if (
+        e.touches &&
+        e.touches.length === 1 &&
+        (orchestrator.getState() === APP_STATES.STARGAZING ||
+         orchestrator.getState() === APP_STATES.SWEEP_XY ||
+         orchestrator.getState() === APP_STATES.TILT_Z ||
+         orchestrator.getState() === APP_STATES.OBSERVING)
+      ) {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         longPressTimer = setTimeout(() => {
           orchestrator.triggerRecalibration();
           longPressTimer = null;
         }, 2000);
-      }
     }, { passive: true });
 
     document.body.addEventListener('touchmove', (e) => {
@@ -199,7 +216,8 @@ export function initApp() {
     skylineManager,
     ephemerisEngine,
     acousticBeacon,
-    audioStreamReceiver,
+    speechSynthesizer,
+    gemmaEngine,
     orchestrator,
     calibrateAnchor,
     calibrateSkyline

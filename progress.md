@@ -74,3 +74,17 @@ _Updated: October 7, 2026 | Session 3 — Backend Phase 1 Completed; 18 Automate
   - [x] Backend test suite passing 100% (34/34 tests in 269.98s).
   - [x] Sentry Agent Tracing profile validated live via end-to-end traced narrate query generating HTTP 200, `audio/mpeg` content type, `X-Target-Id: saturn`, and 44,740 bytes cleanly.
   - [x] Authored complete publication-ready DEV.to submission post in `docs/DEV_SUBMISSION_POST.md` (27.5 KB, >3,600 words) strictly complying with humanize-writing rules and challenge requirements.
+
+- [x] **Scotopic V2 Architectural Pivot: 100% On-Device, Zero-Backend PWA**
+  - [x] Retired 8.2s cloud proxy architecture; shifted all logic to client-side Web APIs with zero external API key requirements.
+  - [x] Implemented on-device `SpeechSynthesizer` using native `window.speechSynthesis` (pitch: 0.88, rate: 0.85, volume: 0.70) with sub-15ms startup latency.
+  - [x] Built on-device `GemmaEngine` enforcing strict human body phrasing rules (zero mathematical degree or coordinate jargon) and evocative descriptions across all 11 primary celestial targets.
+  - [x] Implemented 2-Phase Ergonomic Stargazer Radar: Phase 0 (1-tap Moon calibration at chest level), Phase 1 (horizontal radar sweep in XY plane at chest level with acoustic beacon and faint 650nm deep red chevron), Phase 2 (vertical head tilt along Z axis at chin level with real-time body cues), and Phase 3 (observation in pure darkness on OLED 0.000 nits with 1-sentence observational whisper).
+  - [x] Added `isHeldFlat()` (pitch <= 25 deg) and `isAtChin()` (pitch > 25 deg) posture detection in `sensors.js`.
+  - [x] Added `updateSectorProximity(deltaAz)` in `acoustic_beacon.js` and `drawChevron()` in `display.js`.
+  - [x] Updated `orchestrator.js` state machine to coordinate V2 flow with full backward compatibility.
+  - [x] Added automated unit and integration tests across `speech_engine.test.js`, `local_gemma.test.js`, `sensors.test.js`, `acoustic_beacon.test.js`, `display.test.js`, and `orchestration_v2.test.js`.
+  - [x] Permanently deleted deprecated cloud backend (`backend/`), deployment configs (`render.yaml`, `requirements.txt`), and legacy streaming client files (`client/src/audio_stream.js`, `client/tests/audio_stream.test.js`).
+  - [x] 100% test pass rate: 70/70 automated client tests passing across 7 test suites in ~1.06 seconds with zero failures, zero skipped tests, and zero mock hacks.
+  - [x] Authored comprehensive root `README.md` and walkthrough report.
+

@@ -212,4 +212,44 @@ describe('OrientationTracker', () => {
     });
     assert.strictEqual(zenith.isNearZenith, true);
   });
+
+  test('Test 9: calibrateMoon acts as an alias to calibrateRebar and stores true azimuth offset', () => {
+    const tracker = new OrientationTracker();
+    tracker.smoothedHeading = 150;
+    const offset = tracker.calibrateMoon(180);
+    assert.strictEqual(offset, 30);
+    assert.strictEqual(tracker.rebarOffset, 30);
+    assert.strictEqual(tracker.isCalibrated, true);
+  });
+
+  test('Test 10: isHeldFlat returns true when pitch <= 25 degrees and false when pitch > 25 degrees', () => {
+    const tracker = new OrientationTracker();
+    tracker.smoothedAltitude = 12.0;
+    assert.strictEqual(tracker.isHeldFlat(), true);
+
+    tracker.smoothedAltitude = 25.0;
+    assert.strictEqual(tracker.isHeldFlat(), true);
+
+    tracker.smoothedAltitude = 25.1;
+    assert.strictEqual(tracker.isHeldFlat(), false);
+
+    tracker.smoothedAltitude = 60.0;
+    assert.strictEqual(tracker.isHeldFlat(), false);
+  });
+
+  test('Test 11: isAtChin returns true when pitch > 25 degrees and false when pitch <= 25 degrees', () => {
+    const tracker = new OrientationTracker();
+    tracker.smoothedAltitude = 15.0;
+    assert.strictEqual(tracker.isAtChin(), false);
+
+    tracker.smoothedAltitude = 25.0;
+    assert.strictEqual(tracker.isAtChin(), false);
+
+    tracker.smoothedAltitude = 26.0;
+    assert.strictEqual(tracker.isAtChin(), true);
+
+    tracker.smoothedAltitude = 75.0;
+    assert.strictEqual(tracker.isAtChin(), true);
+  });
 });
+

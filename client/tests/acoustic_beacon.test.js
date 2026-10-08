@@ -191,4 +191,39 @@ describe('AcousticBeacon', () => {
     assert.strictEqual(beacon.getMasterGain(), 1.0);
     assert.strictEqual(beacon.getIsDucked(), false);
   });
+
+  it('Test 8: updateSectorProximity scales pitch and gain smoothly across +/- 30 degrees sector and silences outside 30 degrees', () => {
+    const mockCtx = createMockAudioContext();
+    const beacon = new AcousticBeacon({ audioContext: mockCtx });
+
+    // Outside sector (> 30 deg): silent (gain 0.0)
+    const outResult = beacon.updateSectorProximity(35.0);
+    assert.strictEqual(outResult.gain, 0.0);
+    assert.strictEqual(beacon.getProximityGain(), 0.0);
+
+    // Negative outside sector (< -30 deg): silent
+    const negOutResult = beacon.updateSectorProximity(-40.0);
+    assert.strictEqual(negOutResult.gain, 0.0);
+
+    // At edge (30 deg): fundamental 220Hz, gain starts
+    const edgeResult = beacon.updateSectorProximity(30.0);
+    assert.strictEqual(edgeResult.fundamentalFreq, 220.0);
+    assert.strictEqual(edgeResult.gain, 0.0);
+
+    // At center (0 deg alignment): fundamental clamped to 440Hz, gain clamped to 0.25
+    const centerResult = beacon.updateSectorProximity(0.0);
+    assert.strictEqual(centerResult.fundamentalFreq, 440.0);
+    assert.strictEqual(centerResult.gain, 0.25);
+
+    // Midpoint of sector scaling range [5.0, 30.0] is 17.5 deg: fundamental 330Hz, gain 0.125
+    const midResult = beacon.updateSectorProximity(-17.5);
+    assert.strictEqual(midResult.fundamentalFreq, 330.0);
+    assert.strictEqual(midResult.gain, 0.125);
+
+    // Point at 15.0 deg: ratio = (15-5)/25 = 0.40 -> fundamental 352Hz, gain 0.15
+    const ptResult = beacon.updateSectorProximity(15.0);
+    assert.strictEqual(ptResult.fundamentalFreq, 352.0);
+    assert.strictEqual(ptResult.gain, 0.15);
+  });
 });
+

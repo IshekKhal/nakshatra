@@ -109,6 +109,63 @@ export class DisplayController {
   }
 
   /**
+   * Resets display to 100% pitch black with zero lumens.
+   */
+  clearCanvas() {
+    return this.render();
+  }
+
+  /**
+   * Draws a faint 650nm deep red chevron (#660000) indicating turning direction.
+   * Preserves rhodopsin dark adaptation during Phase 1 horizontal radar sweep.
+   * @param {string|number} [direction='straight'] 'left', 'right', 'straight', or delta angle
+   * @param {number} [alpha=0.6] Opacity / pulse intensity in [0, 1]
+   */
+  drawChevron(direction = 'straight', alpha = 0.6) {
+    if (!this.canvas || typeof this.canvas.getContext !== 'function') return;
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) return;
+
+    this.render(); // Clear canvas first
+
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const size = Math.min(w, h) * 0.12;
+
+    ctx.save();
+    const clampedAlpha = Math.max(0.1, Math.min(1.0, alpha));
+    ctx.strokeStyle = `rgba(102, 0, 0, ${clampedAlpha})`;
+    ctx.lineWidth = 4 * (this.window ? (this.window.devicePixelRatio || 1) : 1);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    let dir = typeof direction === 'number'
+      ? (direction > 5 ? 'right' : (direction < -5 ? 'left' : 'straight'))
+      : direction;
+
+    if (dir === 'left') {
+      ctx.moveTo(cx + size, cy - size);
+      ctx.lineTo(cx - size, cy);
+      ctx.lineTo(cx + size, cy + size);
+    } else if (dir === 'right') {
+      ctx.moveTo(cx - size, cy - size);
+      ctx.lineTo(cx + size, cy);
+      ctx.lineTo(cx - size, cy + size);
+    } else {
+      // Straight / Ahead chevron
+      ctx.moveTo(cx - size, cy + size * 0.5);
+      ctx.lineTo(cx, cy - size * 0.5);
+      ctx.lineTo(cx + size, cy + size * 0.5);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+
+  /**
    * Attaches touch event handlers detecting two-finger tap to toggle deep red mode.
    * Prevents default pinch-to-zoom and browser gestures.
    * @param {HTMLElement|Object} element
