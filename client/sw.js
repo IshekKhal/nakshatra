@@ -3,7 +3,7 @@
  * Provides 100% offline rooftop PWA capabilities with Cache-First App Shell caching.
  */
 
-const CACHE_NAME = 'scotopic-shell-v1';
+const CACHE_NAME = 'scotopic-shell-v2';
 
 const PRECACHE_RESOURCES = [
   './',
@@ -19,7 +19,8 @@ const PRECACHE_RESOURCES = [
   './src/ephemeris.js',
   './src/celestial_catalog.js',
   './src/acoustic_beacon.js',
-  './src/audio_stream.js',
+  './src/speech_engine.js',
+  './src/local_gemma.js',
   './src/orchestrator.js',
   './icons/icon-192.svg',
   './icons/icon-512.svg'
@@ -52,7 +53,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // Bypass API calls to network with offline fallback handled by AudioStreamReceiver
+  // V2 is 100% on-device with zero backend API dependencies
   if (requestUrl.pathname.startsWith('/api/')) {
     return;
   }

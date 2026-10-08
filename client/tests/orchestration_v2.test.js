@@ -170,18 +170,18 @@ describe('SessionOrchestrator V2 (2-Phase Ergonomic Stargazer Radar)', () => {
     assert.ok(visibleTargets.length > 0);
     const target = visibleTargets[0];
 
-    // Sweep: phone approaches target azimuth within 10 degrees
-    h.orchestrator.handleSensorFrame(target.azimuth + 8.0, 15.0);
+    // Sweep: phone approaches target azimuth within sector window
+    h.orchestrator.handleSensorFrame(target.azimuth + 1.5, 15.0);
     assert.strictEqual(h.orchestrator.getCurrentTarget()?.name, target.name);
     assert.ok(h.getSectorDelta() !== null);
 
     // Steady hold within 5 degrees for 1200ms triggers heading lock
-    h.orchestrator.handleSensorFrame(target.azimuth + 2.0, 15.0);
+    h.orchestrator.handleSensorFrame(target.azimuth + 1.0, 15.0);
     assert.strictEqual(h.orchestrator.getState(), APP_STATES.SWEEP_XY);
 
     // Simulate 1300ms passing
     h.orchestrator._headingDwellStart = Date.now() - 1300;
-    h.orchestrator.handleSensorFrame(target.azimuth + 1.0, 15.0);
+    h.orchestrator.handleSensorFrame(target.azimuth + 0.5, 15.0);
 
     // Heading locked! Transitions to TILT_Z
     assert.strictEqual(h.orchestrator.getState(), APP_STATES.TILT_Z);

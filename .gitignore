@@ -1,8 +1,14 @@
+# Dependencies
+node_modules/
+
 # Documentation & Sensitive files
 /docs/*
 
-
-*.txt
-!requirements.txt
+# Environment & Local secrets
 .env*
-!.env.example
+*.local
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
