@@ -270,11 +270,34 @@ export class AudioStreamReceiver {
 
     try {
       this._isStreaming = true;
-      const url = `${this.apiEndpoint}?target=${encodeURIComponent(targetId)}`;
+      const {
+        lat: optLat,
+        lon: optLon,
+        alt: optAlt,
+        az: optAz,
+        headers: optHeaders,
+        ...restOptions
+      } = options;
+
+      const lat = optLat !== undefined ? optLat : (target && target.lat !== undefined ? target.lat : 0.0);
+      const lon = optLon !== undefined ? optLon : (target && target.lon !== undefined ? target.lon : 0.0);
+      const alt = optAlt !== undefined ? optAlt : (target && (target.altitude !== undefined ? target.altitude : (target.alt !== undefined ? target.alt : 45.0)));
+      const az = optAz !== undefined ? optAz : (target && (target.azimuth !== undefined ? target.azimuth : (target.az !== undefined ? target.az : 180.0)));
+
+      const queryParams = new URLSearchParams({
+        target: targetId,
+        lat: String(lat),
+        lon: String(lon),
+        alt: String(alt),
+        az: String(az)
+      });
+      const separator = this.apiEndpoint.includes('?') ? '&' : '?';
+      const url = `${this.apiEndpoint}${separator}${queryParams.toString()}`;
+
       const fetchPromise = fetchImpl(url, {
         signal: controller ? controller.signal : undefined,
-        headers: { Accept: 'audio/wav, audio/mpeg, application/octet-stream' },
-        ...options
+        headers: { Accept: 'audio/wav, audio/mpeg, application/octet-stream', ...optHeaders },
+        ...restOptions
       });
 
       const response = await Promise.race([fetchPromise, timeoutPromise]);

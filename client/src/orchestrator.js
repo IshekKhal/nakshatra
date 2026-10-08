@@ -225,7 +225,25 @@ export class SessionOrchestrator {
         this.acousticBeacon.setDucked(true);
       }
       if (dwellState.target && this.audioStreamReceiver && typeof this.audioStreamReceiver.playTargetNarration === 'function') {
-        this.audioStreamReceiver.playTargetNarration(dwellState.target);
+        const obsLat = (this.ephemerisEngine && this.ephemerisEngine.observer && typeof this.ephemerisEngine.observer.latitude === 'number')
+          ? this.ephemerisEngine.observer.latitude
+          : 0.0;
+        const obsLon = (this.ephemerisEngine && this.ephemerisEngine.observer && typeof this.ephemerisEngine.observer.longitude === 'number')
+          ? this.ephemerisEngine.observer.longitude
+          : 0.0;
+        const targetAlt = (dwellState.target && typeof dwellState.target.altitude === 'number')
+          ? dwellState.target.altitude
+          : (alt !== undefined ? alt : 45.0);
+        const targetAz = (dwellState.target && typeof dwellState.target.azimuth === 'number')
+          ? dwellState.target.azimuth
+          : (az !== undefined ? az : 180.0);
+
+        this.audioStreamReceiver.playTargetNarration(dwellState.target, {
+          lat: obsLat,
+          lon: obsLon,
+          alt: targetAlt,
+          az: targetAz
+        });
       }
     } else if (!dwellState.isLocked && this.wasLocked) {
       this.wasLocked = false;
