@@ -1,0 +1,12 @@
+{
+  "name": "project-scotopic-root",
+  "version": "2.0.0",
+  "description": "Project Scotopic (AstroWhisper) V2 — On-Device Zero-Lumen Stargazing",
+  "private": true,
+  "scripts": {
+    "start": "npx -y serve client",
+    "serve": "npx -y serve client",
+    "dev": "npx -y serve client",
+    "test": "npm --prefix client test"
+  }
+}

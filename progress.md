@@ -91,4 +91,64 @@ _Updated: October 7, 2026 | Session 3 — Backend Phase 1 Completed; 18 Automate
   - [x] Audited complimentary files (.env files, temporary text files) and cleaned up `.gitignore` to track `docs/` in git.
   - [x] Confirmed zero stale code remains in `client/` and 70/70 automated tests pass cleanly.
 
+- [x] **Scotopic V2 Architectural Audit, Web Worker Decoupling & Deployment Automation (Session 9)**
+  - [x] Terminated all lingering processes and verified clean ports (3000, 8000, 8080 idle).
+  - [x] Audited Gemma model lineage: Gemma 3 270M (260MB, ungated, primary edge model), Gemma 3 1B (high tier), Gemma 2 2B (HTTP 401 gate blocker), and Gemma 4 series (multimodal 2.6GB weights exceeding mobile OS memory ceilings).
+  - [x] Eliminated mobile UI freezes by authoring `client/src/gemma_worker.js` and offloading Transformers.js WebGPU compilation from the main JavaScript thread.
+  - [x] Configured zero-config GitHub Pages deployment via root `index.html` redirect, `.nojekyll`, and `.github/workflows/pages.yml`.
+  - [x] Launched high-speed Cloudflare Tunnel (`https://clean-tall-realty-powell.trycloudflare.com`) eliminating localtunnel phishing interstitials for phone testing.
+  - [x] Documented Chrome DevTools USB Port Forwarding (`chrome://inspect/#devices`) for native zero-latency mobile testing.
+- [x] **Scotopic V2 Bug Fixes, Audio Silencing & Tour Progression (Session 10)**
+  - [x] Silenced continuous acoustic proximity audio loop on heading lock, tilt, and observation.
+  - [x] Implemented target hysteresis and visited targets tracking to stop chevron flickering and repeated target locking.
+  - [x] Resolved observation state deadlock with automatic 8-second transition and tap-to-advance handling.
+  - [x] Upgraded status dot to 8px circular indicator with 650nm deep red glow.
+  - [x] Enlarged 650nm directional chevrons for improved dark-adapted visibility.
+  - [x] 100% automated test pass rate: 70/70 tests passing across 7 suites in ~1.07s with zero failures.
+- [x] **Scotopic V2 CacheStorage Purging, Hardware Capacity Checks & Instant Stargazer Mode (Session 11)**
+  - [x] Uncovered Transformers.js Cache API storage (`transformers-cache`) vs IndexedDB mismatch, resolving the 260 MB in 1 second vs 308 MB in 1 minute paradox.
+  - [x] Rewrote `clearModelCache()` to comprehensively purge `window.caches`, IndexedDB databases, `localStorage`, `sessionStorage`, and active Web Workers.
+  - [x] Profiled mobile GPU hardware limits (`adapter.limits.maxBufferSize` = 256 MB on Adreno) and WASM 32-bit linear heap OOM conditions on 308 MB models.
+  - [x] Implemented pre-flight `checkWebGPUCapacity()` avoiding doomed WebGPU allocations on budget mobile GPUs.
+  - [x] Deployed `#btn-instant-mode` in welcome overlay with scotopic 650nm deep red styling, supporting 4 operational user scenarios.
+- [x] **Scotopic V2 80+ Target Lore Engine, Z-Axis Decoupling & Sticky Latching (Session 12)**
+  - [x] Expanded `CELESTIAL_OBSERVATIONS` with tailored lore for all 80+ catalog targets, permanently eliminating repetitive fallback whispers.
+  - [x] Implemented procedural lore generation using constellation name, spectral color, and distance for uncataloged targets.
+  - [x] Decoupled Z-axis (pitch and altitude) in `OBSERVING` state, preserving lock through arm movements and waist holds.
+  - [x] Established 2.50m rooftop kinematic freedom radius (~4 walking steps) or screen tap for observation exit.
+  - [x] Added 30-minute target cooldown preventing repetitive re-acquisition of already observed targets.
+  - [x] Added sticky target latching with 35-degree window in `SWEEP_XY` to eliminate compass jitter in dense star fields.
+  - [x] 100% automated test pass rate: 79/79 tests passing across 7 suites in ~1.27s with zero failures.
+- [x] **Scotopic V2 Progress Strobing Elimination, On-Demand Gemma Download & Exhaustive Post-Mortem (Session 13)**
+  - [x] Diagnosed 2,744 asynchronous progress event race condition in Transformers.js between metadata (`tokenizer.json`) and weight shards (`model_q4f16.onnx_data`), permanently eliminating UI strobing between 0% and 11%.
+  - [x] Fixed weight progress tracker to monitor `.onnx_data` specifically rather than graph metadata (`model_q4.onnx`, 0.2 MB).
+  - [x] Converted Gemma download into an explicit on-demand opt-in (`Download On-Device Gemma (260 MB)`) so opening or clearing the page immediately boots the 80+ Local Catalog with zero network delay and zero bandwidth consumption.
+  - [x] Disallowed CPU WASM 308 MB download fallback on mobile devices, preventing Emscripten 32-bit linear memory OOM pointer `11460544`.
+  - [x] Verified clean state on connected physical Motorola phone via Chrome DevTools Protocol (`phone_clean_no_download.png`).
+  - [x] Authored comprehensive 600+ line engineering post-mortem in `MASTER_BUILD_LOG.md` detailing all 13 project failure modes from inception.
+  - [x] 100% automated test pass rate: 79/79 tests passing across 7 suites in ~1.27s with zero failures.
+- [x] **Scotopic V2 Hardware Pre-Flight Probe, Stale PWA Shell Invalidation & Instant Catalog Fallback (Session 14)**
+  - [x] Diagnosed 0.3 MB graph header completion flash and Emscripten runtime crash pointer `11460544` on Qualcomm Adreno 6xx mobile GPU drivers.
+  - [x] Resolved stale Service Worker cache trap (`scotopic-shell-v10`) by updating `clearModelCache()` to comprehensively purge all shell namespaces and unregister active service workers.
+  - [x] Incremented Service Worker cache identifier to `scotopic-shell-v11` in `client/sw.js`.
+  - [x] Added `verifyHardwareSupport()` pre-flight probe executing in under 2ms on page boot, detecting Qualcomm Adreno 6xx drivers and buffer limits under 280 MB.
+  - [x] Suppressed the `Download On-Device Gemma (260 MB)` button on unsupported mobile hardware, displaying the limit immediately and defaulting the primary button to `Start Stargazing (Local Catalog)`.
+  - [x] Enforced pre-flight validation in `initGemma()` preventing accidental network calls on unsupported devices.
+  - [x] Verified live physical Motorola phone (`moto g45 5G`, target 7070) over CDP with verified screen snapshot `phone_clean_no_download.png`.
+  - [x] **Scotopic V2 4-Quadrant Celestial Anchoring, TILT_Z Abort Recovery & 3.5m Kinematic Radius (Session 15)**
+  - [x] Resolved `TILT_Z` deadlock trap where turning away or moving across the room kept the phone locked in green "TILT UP" and whispering elevation cues.
+  - [x] Implemented multi-branch abort logic in `TILT_Z`: turning away >25 degrees, lowering phone flat (`alt < 8.0`), moving >=1.5m, or timing out after 12s cleanly aborts back to `SWEEP_XY`, clears canvas, resets status dot to red `SCANNING`, and whispers "Scanning...".
+  - [x] Fixed accelerometer gravity leak in `OrientationTracker.handleMotion()` by isolating dynamic acceleration from Earth's 9.81 m/s^2 baseline, stopping false step accumulation while holding phone stationary.
+  - [x] Built 4-Quadrant Celestial Architecture dividing the sky into 4 cardinal 90-degree sectors (Q1: 0-90, Q2: 90-180, Q3: 180-270, Q4: 270-360) and anchoring a single dominant target per quadrant to permanently stop multi-star flipping.
+  - [x] Expanded observation walk-away threshold to 3.50 meters while preserving complete decoupling from phone tilt, pitch, roll, and waist/pocket holds.
+  - [x] Fixed Temporal Dead Zone `ReferenceError` for `targetAlt` in `orchestrator.js`.
+  - [x] Incremented Service Worker cache version to `scotopic-shell-v13`.
+  - [x] Expanded automated test suite to 81 tests (`npm test`: 81/81 passing across 7 suites in ~1.34s).
+  - [x] Live CDP verification on connected Motorola phone (`moto g45 5G`, target 7070) confirming quadrant calculations, `TILT_Z` turn abort, and 3.5m observation decoupling.
+
+
+
+
+
+
 

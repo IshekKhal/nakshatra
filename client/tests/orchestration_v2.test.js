@@ -24,7 +24,14 @@ describe('SessionOrchestrator V2 (2-Phase Ergonomic Stargazer Radar)', () => {
         beginPath: () => {},
         moveTo: () => {},
         lineTo: () => {},
-        stroke: () => {}
+        stroke: () => {},
+        fill: () => {},
+        arc: () => {},
+        fillText: () => {},
+        measureText: () => ({ width: 60 }),
+        quadraticCurveTo: () => {},
+        closePath: () => {},
+        rect: () => {}
       })
     };
     const dot = { style: { backgroundColor: '' } };
@@ -165,13 +172,15 @@ describe('SessionOrchestrator V2 (2-Phase Ergonomic Stargazer Radar)', () => {
     h.orchestrator.handleCalibrationTap();
     assert.strictEqual(h.orchestrator.getState(), APP_STATES.SWEEP_XY);
 
-    // Pick visible target
+    // Pick visible target with clear angular separation (> 8 degrees from any neighbor)
     const visibleTargets = h.ephemerisEngine.getAllVisibleTargets(new Date(), h.skylineManager);
     assert.ok(visibleTargets.length > 0);
-    const target = visibleTargets[0];
+    const target = visibleTargets.find(t => 
+      !visibleTargets.some(other => other !== t && Math.abs(other.azimuth - t.azimuth) < 8.0)
+    ) || visibleTargets[0];
 
     // Sweep: phone approaches target azimuth within sector window
-    h.orchestrator.handleSensorFrame(target.azimuth + 1.5, 15.0);
+    h.orchestrator.handleSensorFrame(target.azimuth + 0.5, 15.0);
     assert.strictEqual(h.orchestrator.getCurrentTarget()?.name, target.name);
     assert.ok(h.getSectorDelta() !== null);
 
@@ -212,5 +221,136 @@ describe('SessionOrchestrator V2 (2-Phase Ergonomic Stargazer Radar)', () => {
     h.orchestrator.triggerRecalibration();
     assert.strictEqual(h.orchestrator.getState(), APP_STATES.CALIBRATING_MOON);
     assert.strictEqual(h.orchestrator.isCalibrated(), false);
+  });
+
+  test('Test 6: 30-minute target cooldown places observed target in cooldown and skips it in subsequent sweep', async () => {
+    const h = createTestHarness();
+    await h.orchestrator.handleFirstTouch();
+    h.orchestrator.handleCalibrationTap();
+
+    const visibleTargets = h.ephemerisEngine.getAllVisibleTargets(new Date(), h.skylineManager);
+    assert.ok(visibleTargets.length >= 2);
+    const target1 = visibleTargets[0];
+
+    // Trigger lock on target1
+    h.orchestrator._setState(APP_STATES.TILT_Z);
+    h.orchestrator.currentTarget = target1;
+    h.orchestrator.handleSensorFrame(target1.azimuth, target1.altitude);
+
+    assert.strictEqual(h.orchestrator.getState(), APP_STATES.OBSERVING);
+    assert.strictEqual(h.orchestrator._isTargetCooledDown(target1.name), true);
+
+    // Tap to exit back to sweep
+    h.orchestrator.handleCalibrationTap();
+    assert.strictEqual(h.orchestrator.getState(), APP_STATES.SWEEP_XY);
+
+    // Target 1 remains in cooldown for 30 minutes
+    assert.strictEqual(h.orchestrator._isTargetCooledDown(target1.name), true);
+  });
+
+  test('Test 7: Sticky target latching locks onto target and retains tracking without jittering', async () => {
+    const h = createTestHarness();
+    await h.orchestrator.handleFirstTouch();
+    h.orchestrator.handleCalibrationTap();
+
+    const visibleTargets = h.ephemerisEngine.getAllVisibleTargets(new Date(), h.skylineManager);
+    const target = visibleTargets[0];
+
+    // Frame 1: heading approaches target within 30 degrees
+    h.orchestrator.handleSensorFrame(target.azimuth + 4.0, 15.0);
+    assert.strictEqual(h.orchestrator._latchedTarget?.name, target.name);
+
+    // Frame 2: minor gyro tremble (+/- 2 degrees) keeps tracking latched target
+    h.orchestrator.handleSensorFrame(target.azimuth + 2.0, 15.0);
+    assert.strictEqual(h.orchestrator._latchedTarget?.name, target.name);
+    assert.strictEqual(h.orchestrator.getCurrentTarget()?.name, target.name);
+  });
+
+  test('Test 8: Decoupled Z-axis preserves OBSERVING during arm movements; displacement >= 3.50m triggers exit', async () => {
+    const h = createTestHarness();
+    await h.orchestrator.handleFirstTouch();
+    h.orchestrator.handleCalibrationTap();
+
+    const target = h.ephemerisEngine.getAllVisibleTargets(new Date(), h.skylineManager)[0];
+    h.orchestrator._setState(APP_STATES.TILT_Z);
+    h.orchestrator.currentTarget = target;
+    h.orchestrator.handleSensorFrame(target.azimuth, target.altitude);
+    assert.strictEqual(h.orchestrator.getState(), APP_STATES.OBSERVING);
+
+    // Pitch changes / lowering phone to chest (Z-axis) do not break lock
+    h.orchestrator._observingStartTime = Date.now() - 3000;
+    h.orientationTracker.displacementMeters = 2.0; // 2.0 meters (< 3.5m)
+    h.orchestrator.handleSensorFrame(target.azimuth, 10.0); // pitch lowered to 10 deg
+    assert.strictEqual(h.orchestrator.getState(), APP_STATES.OBSERVING);
+
+    // Physical rooftop walk exceeding 3.5 meters triggers exit back to SWEEP_XY
+    h.orientationTracker.displacementMeters = 3.6; // 3.6 meters (> 3.5m)
+    h.orchestrator.handleSensorFrame(target.azimuth, 10.0);
+    assert.strictEqual(h.orchestrator.getState(), APP_STATES.SWEEP_XY);
+  });
+
+  test('Test 9: TILT_Z aborts back to SWEEP_XY when turning away > 25 degrees or lowering phone flat', async () => {
+    const h = createTestHarness();
+    await h.orchestrator.handleFirstTouch();
+    h.orchestrator.handleCalibrationTap();
+
+    const target = h.ephemerisEngine.getAllVisibleTargets(new Date(), h.skylineManager)[0];
+    h.orchestrator.currentTarget = target;
+    h.orchestrator._setState(APP_STATES.TILT_Z);
+
+    // Minor deviation (+/- 10 deg) keeps TILT_Z active
+    h.orchestrator.handleSensorFrame(target.azimuth + 10.0, 35.0);
+    assert.strictEqual(h.orchestrator.getState(), APP_STATES.TILT_Z);
+
+    // Turning away by 30 degrees (> 25 deg) aborts TILT_Z immediately back to SWEEP_XY
+    h.orchestrator.handleSensorFrame(target.azimuth + 30.0, 35.0);
+    assert.strictEqual(h.orchestrator.getState(), APP_STATES.SWEEP_XY);
+    assert.ok(h.spokenLines.some(l => l.includes('Scanning...')));
+
+    // Re-enter TILT_Z and test lowering phone flat (< 8 deg when targetAlt >= 12 deg)
+    h.orchestrator.currentTarget = { name: 'Altair', azimuth: 120.0, altitude: 45.0 };
+    h.orchestrator._setState(APP_STATES.TILT_Z);
+    h.orchestrator.handleSensorFrame(120.0, 4.0); // lowered flat
+    assert.strictEqual(h.orchestrator.getState(), APP_STATES.SWEEP_XY);
+  });
+
+  test('Test 10: 4-Quadrant mapping divides sky into 4 sectors and anchors primary target per quadrant', () => {
+    const h = createTestHarness();
+    assert.strictEqual(h.orchestrator.getQuadrant(0), 1);
+    assert.strictEqual(h.orchestrator.getQuadrant(45), 1);
+    assert.strictEqual(h.orchestrator.getQuadrant(89.9), 1);
+    assert.strictEqual(h.orchestrator.getQuadrant(90), 2);
+    assert.strictEqual(h.orchestrator.getQuadrant(135), 2);
+    assert.strictEqual(h.orchestrator.getQuadrant(179.9), 2);
+    assert.strictEqual(h.orchestrator.getQuadrant(180), 3);
+    assert.strictEqual(h.orchestrator.getQuadrant(225), 3);
+    assert.strictEqual(h.orchestrator.getQuadrant(269.9), 3);
+    assert.strictEqual(h.orchestrator.getQuadrant(270), 4);
+    assert.strictEqual(h.orchestrator.getQuadrant(315), 4);
+    assert.strictEqual(h.orchestrator.getQuadrant(359.9), 4);
+
+    const mockTargets = [
+      { name: 'Vega', azimuth: 45.0, altitude: 60.0, mag: 0.03 },
+      { name: 'TinyStar1', azimuth: 50.0, altitude: 30.0, mag: 4.5 },
+      { name: 'Jupiter', azimuth: 135.0, altitude: 40.0, mag: -2.0 },
+      { name: 'Saturn', azimuth: 225.0, altitude: 35.0, mag: 0.5 },
+      { name: 'Polaris', azimuth: 350.0, altitude: 50.0, mag: 2.0 }
+    ];
+
+    // Quadrant 1 picks brightest star Vega over dimmer TinyStar1
+    const q1Anchor = h.orchestrator.getQuadrantAnchorTarget(1, mockTargets);
+    assert.strictEqual(q1Anchor.name, 'Vega');
+
+    // Quadrant 2 picks major planet Jupiter
+    const q2Anchor = h.orchestrator.getQuadrantAnchorTarget(2, mockTargets);
+    assert.strictEqual(q2Anchor.name, 'Jupiter');
+
+    // Quadrant 3 picks Saturn
+    const q3Anchor = h.orchestrator.getQuadrantAnchorTarget(3, mockTargets);
+    assert.strictEqual(q3Anchor.name, 'Saturn');
+
+    // Quadrant 4 picks Polaris
+    const q4Anchor = h.orchestrator.getQuadrantAnchorTarget(4, mockTargets);
+    assert.strictEqual(q4Anchor.name, 'Polaris');
   });
 });

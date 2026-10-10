@@ -23,8 +23,14 @@ export class OrientationTracker {
     this.isCalibrated = false;
     this.isTracking = false;
 
+    // Physical rooftop displacement & footstep pedometer tracking
+    this.displacementMeters = 0.0;
+    this.stepsDetected = 0;
+    this._lastStepTime = 0;
+
     this._boundEventType = null;
     this._orientationHandler = (event) => this.handleOrientation(event);
+    this._motionHandler = (event) => this.handleMotion(event);
   }
 
   /**
@@ -69,18 +75,73 @@ export class OrientationTracker {
     }
 
     this.windowRef.addEventListener(this._boundEventType, this._orientationHandler, true);
+
+    // Bind devicemotion for rooftop displacement & step detection
+    if ('ondevicemotion' in this.windowRef || 'DeviceMotionEvent' in this.windowRef) {
+      this.windowRef.addEventListener('devicemotion', this._motionHandler, true);
+    }
     this.isTracking = true;
   }
 
   /**
-   * Unbinds orientation event listeners and halts tracking.
+   * Unbinds orientation and motion event listeners and halts tracking.
    */
   stopTracking() {
-    if (this.windowRef && this._boundEventType && typeof this.windowRef.removeEventListener === 'function') {
-      this.windowRef.removeEventListener(this._boundEventType, this._orientationHandler, true);
+    if (this.windowRef && typeof this.windowRef.removeEventListener === 'function') {
+      if (this._boundEventType) {
+        this.windowRef.removeEventListener(this._boundEventType, this._orientationHandler, true);
+      }
+      this.windowRef.removeEventListener('devicemotion', this._motionHandler, true);
     }
     this.isTracking = false;
     this._boundEventType = null;
+  }
+
+  /**
+   * Processes accelerometer events to detect walking steps and physical displacement.
+   * A single footstep produces a 1.2 m/s^2 linear acceleration peak and corresponds to ~0.65m displacement.
+   * @param {DeviceMotionEvent} event
+   */
+  handleMotion(event) {
+    if (!event) return;
+
+    let dynamicMag = 0;
+    if (event.acceleration && typeof event.acceleration.x === 'number' && event.acceleration.x !== null) {
+      const ax = Number(event.acceleration.x) || 0;
+      const ay = Number(event.acceleration.y) || 0;
+      const az = Number(event.acceleration.z) || 0;
+      dynamicMag = Math.sqrt(ax * ax + ay * ay + az * az);
+    } else if (event.accelerationIncludingGravity) {
+      const ax = Number(event.accelerationIncludingGravity.x) || 0;
+      const ay = Number(event.accelerationIncludingGravity.y) || 0;
+      const az = Number(event.accelerationIncludingGravity.z) || 0;
+      const rawMag = Math.sqrt(ax * ax + ay * ay + az * az);
+      dynamicMag = Math.abs(rawMag - 9.81);
+    }
+
+    const now = Date.now();
+    // Real footstep shock threshold: dynamic acceleration > 1.4 m/s^2 with human cadence >= 350ms
+    if (dynamicMag > 1.4 && (now - this._lastStepTime > 350)) {
+      this._lastStepTime = now;
+      this.stepsDetected += 1;
+      this.displacementMeters += 0.65;
+    }
+  }
+
+  /**
+   * Resets physical displacement accumulator.
+   */
+  resetDisplacement() {
+    this.displacementMeters = 0.0;
+    this.stepsDetected = 0;
+  }
+
+  /**
+   * Returns estimated physical displacement in meters since last reset.
+   * @returns {number} Distance in meters
+   */
+  getDisplacementSinceLock() {
+    return this.displacementMeters;
   }
 
   /**

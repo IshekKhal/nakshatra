@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   SOLAR_SYSTEM_BODIES,
   BRIGHT_STARS,
+  ALL_STARS,
   MESSIER_OBJECTS,
   METEOR_RADIANTS
 } from '../src/celestial_catalog.js';
@@ -114,6 +115,17 @@ test('CelestialCatalog', async (t) => {
       assert.equal(orionids.parent, '1P/Halley');
       assert.ok(Math.abs(orionids.raHours - 6.333) < 0.05, 'RA should be approximately 6.333 hours');
       assert.ok(Math.abs(orionids.decDeg - 16.0) < 0.5, 'Dec should be approximately +16 degrees');
+    }
+  );
+
+  await t.test(
+    'Test 6: ALL_STARS and total catalog contains 80+ celestial targets across planets, navigation stars, Messier objects, and meteor radiants',
+    () => {
+      assert.ok(Array.isArray(ALL_STARS), 'ALL_STARS must be an array');
+      assert.ok(ALL_STARS.length >= 60, `ALL_STARS should contain at least 60 stars, found ${ALL_STARS.length}`);
+
+      const totalBodies = SOLAR_SYSTEM_BODIES.length + ALL_STARS.length + MESSIER_OBJECTS.length + METEOR_RADIANTS.length;
+      assert.ok(totalBodies >= 80, `Total catalog must contain at least 80 celestial bodies, found ${totalBodies}`);
     }
   );
 });

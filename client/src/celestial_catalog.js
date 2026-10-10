@@ -272,6 +272,71 @@ export const BRIGHT_STARS = [
 ];
 
 /**
+ * Additional prominent naked-eye stars (magnitude <= 2.8) across iconic constellations
+ * including the Big Dipper, Cassiopeia, Pegasus, Cygnus, Taurus, and Orion.
+ */
+export const ADDITIONAL_NAKED_EYE_STARS = [
+  // Ursa Major (The Big Dipper)
+  { name: 'Dubhe', designation: 'Alpha Ursae Majoris', constellation: 'UMa', raHours: 11.062, decDeg: 61.75, mag: 1.79 },
+  { name: 'Merak', designation: 'Beta Ursae Majoris', constellation: 'UMa', raHours: 11.031, decDeg: 56.38, mag: 2.37 },
+  { name: 'Phecda', designation: 'Gamma Ursae Majoris', constellation: 'UMa', raHours: 11.900, decDeg: 53.69, mag: 2.44 },
+  { name: 'Alioth', designation: 'Epsilon Ursae Majoris', constellation: 'UMa', raHours: 12.900, decDeg: 55.96, mag: 1.77 },
+  { name: 'Mizar', designation: 'Zeta Ursae Majoris', constellation: 'UMa', raHours: 13.399, decDeg: 54.92, mag: 2.23 },
+  { name: 'Alkaid', designation: 'Eta Ursae Majoris', constellation: 'UMa', raHours: 13.792, decDeg: 49.31, mag: 1.86 },
+
+  // Cassiopeia (The Celestial Throne / W)
+  { name: 'Schedar', designation: 'Alpha Cassiopeiae', constellation: 'Cas', raHours: 0.675, decDeg: 56.54, mag: 2.24 },
+  { name: 'Caph', designation: 'Beta Cassiopeiae', constellation: 'Cas', raHours: 0.153, decDeg: 59.15, mag: 2.28 },
+  { name: 'Gamma Cassiopeiae', designation: 'Gamma Cassiopeiae', constellation: 'Cas', raHours: 0.945, decDeg: 60.72, mag: 2.15 },
+  { name: 'Ruchbah', designation: 'Delta Cassiopeiae', constellation: 'Cas', raHours: 1.429, decDeg: 60.23, mag: 2.68 },
+
+  // Pegasus (Great Square of Autumn)
+  { name: 'Alpheratz', designation: 'Alpha Andromedae', constellation: 'And', raHours: 0.139, decDeg: 29.09, mag: 2.06 },
+  { name: 'Scheat', designation: 'Beta Pegasi', constellation: 'Peg', raHours: 23.063, decDeg: 28.08, mag: 2.42 },
+  { name: 'Markab', designation: 'Alpha Pegasi', constellation: 'Peg', raHours: 23.079, decDeg: 15.21, mag: 2.49 },
+  { name: 'Algenib', designation: 'Gamma Pegasi', constellation: 'Peg', raHours: 0.221, decDeg: 15.18, mag: 2.83 },
+
+  // Cygnus (Northern Cross)
+  { name: 'Sadr', designation: 'Gamma Cygni', constellation: 'Cyg', raHours: 20.373, decDeg: 40.26, mag: 2.23 },
+  { name: 'Gienah', designation: 'Epsilon Cygni', constellation: 'Cyg', raHours: 20.770, decDeg: 33.97, mag: 2.46 },
+
+  // Orion & Taurus Belt/Shield
+  { name: 'Mintaka', designation: 'Delta Orionis', constellation: 'Ori', raHours: 5.533, decDeg: -0.30, mag: 2.23 },
+  { name: 'Alnitak', designation: 'Zeta Orionis', constellation: 'Ori', raHours: 5.679, decDeg: -1.94, mag: 1.77 },
+  { name: 'Saiph', designation: 'Kappa Orionis', constellation: 'Ori', raHours: 5.796, decDeg: -9.67, mag: 2.07 },
+
+  // Canis Major & Carina
+  { name: 'Wezen', designation: 'Delta Canis Majoris', constellation: 'CMa', raHours: 7.140, decDeg: -26.39, mag: 1.83 },
+  { name: 'Murzim', designation: 'Beta Canis Majoris', constellation: 'CMa', raHours: 6.378, decDeg: -17.96, mag: 1.98 },
+  { name: 'Avior', designation: 'Epsilon Carinae', constellation: 'Car', raHours: 8.375, decDeg: -59.51, mag: 1.86 },
+  { name: 'Aspidiske', designation: 'Iota Carinae', constellation: 'Car', raHours: 9.284, decDeg: -59.28, mag: 2.21 },
+
+  // Scorpius & Sagittarius
+  { name: 'Dschubba', designation: 'Delta Scorpii', constellation: 'Sco', raHours: 16.006, decDeg: -22.62, mag: 2.32 },
+  { name: 'Sargas', designation: 'Theta Scorpii', constellation: 'Sco', raHours: 17.624, decDeg: -42.99, mag: 1.87 },
+  { name: 'Kaus Australis', designation: 'Epsilon Sagittarii', constellation: 'Sgr', raHours: 18.403, decDeg: -34.38, mag: 1.85 },
+  { name: 'Nunki', designation: 'Sigma Sagittarii', constellation: 'Sgr', raHours: 18.921, decDeg: -26.30, mag: 2.05 },
+
+  // Leo & Corona Borealis & Ophiuchus
+  { name: 'Algieba', designation: 'Gamma Leonis', constellation: 'Leo', raHours: 10.333, decDeg: 19.84, mag: 2.08 },
+  { name: 'Denebola', designation: 'Beta Leonis', constellation: 'Leo', raHours: 11.818, decDeg: 14.57, mag: 2.14 },
+  { name: 'Alphecca', designation: 'Alpha Coronae Borealis', constellation: 'CrB', raHours: 15.578, decDeg: 26.71, mag: 2.22 },
+  { name: 'Rasalhague', designation: 'Alpha Ophiuchi', constellation: 'Oph', raHours: 17.582, decDeg: 12.56, mag: 2.08 },
+  { name: 'Sabik', designation: 'Eta Ophiuchi', constellation: 'Oph', raHours: 17.173, decDeg: -15.72, mag: 2.43 },
+
+  // Perseus & Andromeda & Aries
+  { name: 'Mirfak', designation: 'Alpha Persei', constellation: 'Per', raHours: 3.405, decDeg: 49.86, mag: 1.79 },
+  { name: 'Algol', designation: 'Beta Persei', constellation: 'Per', raHours: 3.136, decDeg: 40.96, mag: 2.12 },
+  { name: 'Mirach', designation: 'Beta Andromedae', constellation: 'And', raHours: 1.162, decDeg: 35.62, mag: 2.07 },
+  { name: 'Hamal', designation: 'Alpha Arietis', constellation: 'Ari', raHours: 2.119, decDeg: 23.46, mag: 2.01 }
+];
+
+/**
+ * Combined complete catalog of all 66 navigation and naked-eye stars.
+ */
+export const ALL_STARS = [...BRIGHT_STARS, ...ADDITIONAL_NAKED_EYE_STARS];
+
+/**
  * Iconic Messier deep-sky objects.
  */
 export const MESSIER_OBJECTS = [
@@ -307,6 +372,17 @@ export const MESSIER_OBJECTS = [
     raHours: 3.790,
     decDeg: 24.11,
     mag: 1.60
+  },
+  {
+    id: 'M44',
+    name: 'Beehive Cluster',
+    designation: 'M44 / Praesepe',
+    constellation: 'Cnc',
+    category: 'deep_sky',
+    type: 'Open Cluster',
+    raHours: 8.667,
+    decDeg: 19.67,
+    mag: 3.10
   }
 ];
 
@@ -322,5 +398,32 @@ export const METEOR_RADIANTS = [
     parent: '1P/Halley',
     raHours: 6.333,
     decDeg: 16.0
+  },
+  {
+    id: 'Perseids',
+    name: 'Perseids Meteor Radiant',
+    constellation: 'Per',
+    category: 'meteor_radiant',
+    parent: '109P/Swift-Tuttle',
+    raHours: 3.067,
+    decDeg: 58.0
+  },
+  {
+    id: 'Geminids',
+    name: 'Geminids Meteor Radiant',
+    constellation: 'Gem',
+    category: 'meteor_radiant',
+    parent: '3200 Phaethon',
+    raHours: 7.467,
+    decDeg: 33.0
+  },
+  {
+    id: 'Lyrids',
+    name: 'Lyrids Meteor Radiant',
+    constellation: 'Lyr',
+    category: 'meteor_radiant',
+    parent: 'C/1861 G1 Thatcher',
+    raHours: 18.067,
+    decDeg: 34.0
   }
 ];

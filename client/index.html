@@ -9,10 +9,14 @@
   <meta name="theme-color" content="#000000">
   <title>Scotopic (AstroWhisper)</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon-192.svg">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div id="status-dot" aria-hidden="true"></div>
+  <div id="status-dot" aria-label="Scotopic System Status">
+    <span id="status-indicator-dot"></span>
+    <span id="status-indicator-text">STANDBY</span>
+  </div>
   <canvas id="scotopic-canvas" aria-label="Scotopic Zero-Lumen Canvas"></canvas>
 
   <section id="welcome-overlay" role="dialog" aria-modal="true" aria-label="Calibration and Setup Instructions">
@@ -23,6 +27,12 @@
         <p class="instruction">Tap anywhere to wake sensors and audio.</p>
         <p class="instruction">Hold your phone flat at chest level. Look up at the night sky.</p>
         <p class="instruction hint">Two-finger tap toggles 650nm Deep Red mode for LCD screens.</p>
+        <p id="ai-model-hint" class="instruction hint" style="font-size: 0.75rem; color: #550000; margin-top: 14px;">Local Stargazing Engine: 80+ Catalog Ready</p>
+        <div style="margin-top: 16px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center;">
+          <button id="btn-instant-mode" type="button" class="btn-instant-stargazer">Start Stargazing (Local Catalog)</button>
+          <button id="btn-download-ai" type="button" style="display: none; background: transparent; border: 1px solid #550000; color: #aa4444; font-size: 0.75rem; border-radius: 14px; padding: 6px 14px; cursor: pointer;">Download On-Device Gemma (260 MB)</button>
+        </div>
+        <button id="btn-clear-cache" type="button" style="display: inline-block; margin: 12px auto 0; background: transparent; border: 1px solid #440000; color: #883333; font-size: 0.72rem; border-radius: 12px; padding: 4px 12px; cursor: pointer;">Clear AI Cache</button>
       </div>
 
       <div id="step-rebar" class="calibration-step" style="display: none;">

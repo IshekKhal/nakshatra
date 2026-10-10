@@ -251,5 +251,39 @@ describe('OrientationTracker', () => {
     tracker.smoothedAltitude = 75.0;
     assert.strictEqual(tracker.isAtChin(), true);
   });
+
+  test('Test 12: handleMotion detects walking footsteps and accumulates rooftop displacement', () => {
+    const tracker = new OrientationTracker();
+    assert.strictEqual(tracker.getDisplacementSinceLock(), 0.0);
+
+    // Minor tremor / noise below threshold (< 1.3 m/s^2)
+    tracker.handleMotion({ acceleration: { x: 0.2, y: 0.1, z: 0.2 } });
+    assert.strictEqual(tracker.getDisplacementSinceLock(), 0.0);
+
+    // Step 1: distinct footstep acceleration
+    tracker.handleMotion({ acceleration: { x: 1.2, y: 1.0, z: 0.5 } });
+    assert.strictEqual(tracker.stepsDetected, 1);
+    assert.ok(Math.abs(tracker.getDisplacementSinceLock() - 0.65) < 0.001);
+
+    // Rapid event within debounce window (< 350ms) is ignored
+    tracker.handleMotion({ acceleration: { x: 2.0, y: 2.0, z: 1.0 } });
+    assert.strictEqual(tracker.stepsDetected, 1);
+
+    // Advance timestamp artificially and fire Step 2
+    tracker._lastStepTime = Date.now() - 500;
+    tracker.handleMotion({ acceleration: { x: 1.5, y: 0.8, z: 0.6 } });
+    assert.strictEqual(tracker.stepsDetected, 2);
+    assert.ok(Math.abs(tracker.getDisplacementSinceLock() - 1.30) < 0.001);
+  });
+
+  test('Test 13: resetDisplacement clears accumulated footsteps and displacement', () => {
+    const tracker = new OrientationTracker();
+    tracker.displacementMeters = 1.30;
+    tracker.stepsDetected = 2;
+
+    tracker.resetDisplacement();
+    assert.strictEqual(tracker.getDisplacementSinceLock(), 0.0);
+    assert.strictEqual(tracker.stepsDetected, 0);
+  });
 });
 

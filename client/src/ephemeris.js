@@ -10,6 +10,7 @@ import * as Astronomy from 'astronomy-engine';
 import {
   SOLAR_SYSTEM_BODIES,
   BRIGHT_STARS,
+  ALL_STARS,
   MESSIER_OBJECTS,
   METEOR_RADIANTS
 } from './celestial_catalog.js';
@@ -190,8 +191,9 @@ export class EphemerisEngine {
         }
       }
 
-      // 2. Bright navigation stars
-      for (const star of BRIGHT_STARS) {
+      // 2. Bright and naked-eye navigation stars
+      const starList = Array.isArray(ALL_STARS) && ALL_STARS.length > 0 ? ALL_STARS : BRIGHT_STARS;
+      for (const star of starList) {
         const starTarget = this.computeStarHorizontal(star, date);
         targets.push(starTarget);
       }

@@ -187,5 +187,42 @@ describe('DisplayController', () => {
     assert.strictEqual(clearColor, '#000000');
     assert.strictEqual(canvas._ctx.fillStyle, '#000000');
   });
+
+  it('Test 8: setStatusDot accurately maps emerald green modes for standby and locked targets', () => {
+    const canvas = createMockCanvas();
+    const dot = createMockStatusDot();
+    const controller = new DisplayController(canvas, dot);
+
+    // Green standby during vertical chin alignment
+    const greenStandby = controller.setStatusDot('standby', 'TILT CHIN', 'green');
+    assert.strictEqual(greenStandby, '#003311');
+    assert.strictEqual(controller.statusText, 'TILT CHIN');
+
+    // Green locked during celestial observation
+    const greenLocked = controller.setStatusDot('locked', 'Vega', 'green');
+    assert.strictEqual(greenLocked, '#00ff66');
+    assert.strictEqual(controller.statusText, 'Vega');
+  });
+
+  it('Test 9: drawTiltCue and drawCelestialLock execute smoothly on canvas', () => {
+    const canvas = createMockCanvas(400, 800);
+    const dot = createMockStatusDot();
+    const controller = new DisplayController(canvas, dot);
+
+    // drawTiltCue with chin up (+8 deg)
+    assert.doesNotThrow(() => {
+      controller.drawTiltCue('Tilt your head up slowly', 8.0);
+    });
+
+    // drawTiltCue with chin down (-6 deg)
+    assert.doesNotThrow(() => {
+      controller.drawTiltCue('Lower your head down slowly', -6.0);
+    });
+
+    // drawCelestialLock with target name and lore
+    assert.doesNotThrow(() => {
+      controller.drawCelestialLock('Vega', 'Right above your gaze shines Vega, an icy sapphire star.');
+    });
+  });
 });
 

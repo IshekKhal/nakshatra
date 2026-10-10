@@ -135,3 +135,72 @@ _Persistent Architectural Decisions & Hard-Won Gotchas_
   - Phase 3: Pure pitch black observation at 0.000 nits OLED (`#000000`) with a 1-sentence observational whisper.
 * **Test Verification & Clean Repositioning:** 70 automated client tests pass across 7 test suites in ~1.06 seconds (`node --test tests/*.test.js`) with 100% pass rate. All deprecated cloud backend files (`backend/`, `render.yaml`, `requirements.txt`) and legacy audio stream files (`audio_stream.js`, `audio_stream.test.js`) have been permanently deleted from the codebase.
 
+## 14. On-Device WebGPU Gemma Lineage, Hardware Constraints & Tunneling Protocols
+* **Gemma 3 270M Invariant:** `onnx-community/gemma-3-270m-it-ONNX` is the primary on-device edge model. Weighs 260MB in `q4f16`, allocates ~350MB VRAM, runs at 100–136 tokens/sec on mobile WebGPU, and operates without Hugging Face authentication tokens (ungated). Consumes only 0.75% battery over 25 conversational turns.
+* **Gemma 4 Series Incompatibility Analysis:**
+  - Architecture: Uses `Gemma4ForConditionalGeneration` (multimodal any-to-any architecture with vision and audio towers). Browser runtime text pipelines lack support for this architecture.
+  - Weight Footprint: Total weights exceed 2.6GB (`embed_tokens_q2f16.onnx_data` is 1.29GB, `decoder_model_merged_q2f16.onnx_data` is 0.99GB).
+  - WebGPU Allocation: Allocation exceeds 3.8GB VRAM in WebGPU. Triggers immediate tab termination via the WebKit Jetsam process killer on iOS (1.4GB–1.8GB ceiling) and low-memory killer (LMK) on Android.
+  - Bandwidth: 2.6GB initial download causes network timeouts, data plan exhaustion, and Cache API quota rejection.
+* **Gemma 2 2B Gating:** `onnx-community/gemma-2-2b-it-ONNX` returns HTTP 401 Unauthorized without an authenticated user token and signed license agreement, preventing unauthenticated static web usage.
+* **Mobile WebGPU Hardware Requirements:**
+  - Operating System: iOS 17.4+ (Safari WebGPU flag enabled) or Android 12+ (Chrome 121+ with WebGPU).
+  - SoCs: Apple A16 Bionic / M1+, Qualcomm Snapdragon 7 Gen 2 / 8 Gen 1+, MediaTek Dimensity 8200+.
+  - RAM: Minimum 4GB physical RAM (2GB+ free headroom).
+  - Fallback: Zero-dependency deterministic body-relative engine activates automatically on non-WebGPU devices with zero latency.
+* **Web Worker Thread Decoupling:** Compiling ONNX shaders and downloading weights directly on the main JavaScript thread locks the event loop, dropping frame rates to 0 FPS and blocking touch handlers. `client/src/gemma_worker.js` runs Transformers.js, ONNX Runtime Web, and WebGPU compute pipelines in a dedicated Web Worker, preserving 60 FPS on the main UI thread during all model downloads and compilations.
+* **Tunneling Protocol Invariants:**
+  - `localtunnel` introduces an anti-phishing interstitial warning page (`loca.lt`) requiring IP passwords, which blocked mobile asset loading.
+  - Cloudflare Tunnel (`npx -y cloudflared tunnel --url http://localhost:3000`) provides direct HTTPS endpoints with valid Cloudflare certificates, zero warning pages, and full WebGPU/sensor support.
+  - Chrome DevTools USB Port Forwarding (`chrome://inspect/#devices`) provides zero-latency local testing over USB with full `localhost` security trust.
+
+## 15. Audio Muting, Target Hysteresis & Tour Progression Invariants
+* **Acoustic Beacon Silencing Protocol:** The continuous harmonic proximity beacon operates strictly in `SWEEP_XY`. The moment heading locks or transitions to `TILT_Z` or `OBSERVING`, `acousticBeacon.silence()` must be triggered immediately. Proximity oscillators must never sound during pitch alignment or observation.
+* **Target Hysteresis & Stargazing Tour:** To prevent chevrons and acoustic pitch from flickering between adjacent stars in `SWEEP_XY`, candidate targets are retained with a 35-degree hysteresis band. Completed observations are appended to `_visitedTargets` so users tour across different planets and constellations without re-locking on the same body.
+* **Observing State Auto-Advance:** `OBSERVING` state must never hang indefinitely. It auto-advances back to `SWEEP_XY` after 8 seconds of celestial whisper narration or when the user tilts/turns away by more than 18 degrees. A single tap during `OBSERVING` immediately triggers advancement to the next target.
+* **Status Indicator & HUD Visibility:** The status indicator dot is 8px in diameter with a 650nm deep red glow (`#2b0000` standby, `#bb0000` locked). Chevrons are drawn with a 6px stroke and 18% viewport width in `#660000` to guarantee visibility on dark OLED and LCD screens.
+
+## 16. CacheStorage vs IndexedDB Invariant, Mobile GPU 256MB Buffer Bounds & WASM Heap Limits
+* **Transformers.js Storage Substrate:** Transformers.js stores model files (`model_q4f16.onnx_data`, `model_q4.onnx_data`) inside `window.caches` under cache name `transformers-cache`, not in IndexedDB. Any model cache eviction procedure must explicitly execute `caches.delete('transformers-cache')` in addition to enumerating `indexedDB.databases()`, `localStorage`, and `sessionStorage`.
+* **Mobile WebGPU Buffer Ceiling:** Qualcomm Adreno mobile GPUs (such as those in Snapdragon 6s Gen 3 / Moto g45 5G) set `adapter.limits.maxBufferSize` to 268,435,456 bytes (256.0 MB). Attempting to allocate `model_q4f16.onnx_data` (272,626,176 bytes / 260.0 MB) in WebGPU triggers an unrecoverable buffer creation exception. Pre-flight verification (`adapter.limits.maxBufferSize >= 280MB`) is required before initializing WebGPU pipelines.
+* **32-Bit WASM Linear Memory Out-Of-Memory:** When WebGPU allocation fails, CPU WASM fallback attempts to load `model_q4.onnx_data` (308 MB). In single-threaded 32-bit WASM runtimes with browser heap constraints, this allocation causes an Emscripten OOM exception (pointer `11016072`).
+* **Instant Stargazer Architecture (4-Scenario Support):** The system provides an instant catalog mode (`#btn-instant-mode`) enabling zero-wait operation across four primary scenarios:
+  1. Patient high-end download (WebGPU with buffer capacity >= 280 MB).
+  2. Pre-cached instant launch (CacheStorage populated).
+  3. Fully air-gapped offline launch (zero network access).
+  4. Instant voluntary skip directly to the 80+ celestial body catalog engine.
+
+## 17. Rooftop Displacement Kinematics, Target Latching & 30-Minute Cooldown Invariants
+* **Z-Axis Decoupling in OBSERVING:** Observation lock status depends on geographic and physical position, not arm posture. Once locked in `OBSERVING`, pitch and tilt changes (such as lowering arms to waist level or pocketing the phone) must not break observation lock.
+* **Kinematic Freedom Radius (2.50 Meters):** Observation lock exit is triggered by physical walking displacement (at least 2.50 meters, approximately 4 walking paces detected via accelerometer step integration in `OrientationTracker`) or by an explicit single tap on the screen.
+* **Sticky Target Latching in SWEEP_XY:** In dense asterisms (such as Orion or the Big Dipper), minor compass noise (0.2 degrees) flips azimuth calculations between adjacent stars. The state machine maintains a sticky target lock within a 35-degree window, stabilizing acoustic beacon frequency and chevron guidance.
+* **30-Minute Celestial Body Cooldown:** Upon observation lock, the target name enters `_targetCooldowns` with a 30-minute expiration timestamp. Subsequent sweeps filter out cooling targets, ensuring the user is guided to new stars and deep-sky objects throughout their stargazing session.
+* **80+ Target Celestial Lore Engine:** Every object in the expanded catalog (solar system bodies, navigation stars, Messier objects M31/M42/M45, meteor radiants) has tailored observational lore. Arbitrary or uncataloged targets use procedural synthesis based on constellation, spectral class, and distance, permanently eliminating generic fallback phrases.
+
+## 18. Multi-File Download Progress Synchronization & Mobile Memory Ceiling Invariants
+* **Monotonic Weight Data Progress Filter:** Transformers.js emits asynchronous progress callbacks for graph metadata (`config.json`, `tokenizer.json`, `model_q4f16.onnx`) and weight data (`model_q4f16.onnx_data`). UI progress trackers must filter exclusively for `.onnx_data` (or files > 20 MB) and advance progress monotonically (`maxWeightPct`). Ancillary file events must never overwrite weight percentages with 0% or 100%, preventing visual text strobing.
+* **On-Demand Model Download Protocol:** The welcome screen boots with the 80+ Local Catalog ready by default, consuming 0 KB of network bandwidth on fresh visits. Gemma 3 model downloading requires explicit user opt-in (`#btn-download-ai`), ensuring users are never trapped waiting under the night sky.
+* **Prohibition of Mobile 32-Bit WASM Fallback:** Heavy LLMs (>250 MB) must not fall back to CPU WebAssembly on mobile browsers. Single-threaded 32-bit WASM linear memory heap constraints cause unrecoverable `std::bad_alloc` / Emscripten exception pointers (such as `11460544`). If WebGPU allocation fails, the system immediately switches to the zero-latency 80+ Local Catalog engine.
+
+## 19. Hardware Pre-Flight Probe, Stale PWA Shell Invalidation & Instant Catalog Fallback Invariants
+* **2ms Pre-Flight Hardware Probing:** `verifyHardwareSupport()` queries `navigator.gpu` and `adapter.info` before any network or storage operations. If `adapter.info.vendor` contains `qualcomm` or `adapter.info.architecture` contains `adreno-6`, or if `adapter.limits.maxBufferSize < 280MB`, the system immediately reports the hardware limitation and completely hides the download button (`#btn-download-ai`).
+* **Stale Service Worker Cache Purge Protocol:** When updating frontend code, Service Worker cache names must be incremented (`scotopic-shell-v11`). `clearModelCache()` must enumerate and delete all CacheStorage keys matching `transformers`, `gemma`, and `scotopic-shell`, unregister all service workers, and wipe IndexedDB databases. Targeted single-version cache deletion (`k === 'scotopic-shell-v8'`) leads to stale script trapping where phones run deprecated code.
+* **0.3 MB ONNX Graph Header Completion:** The ONNX Gemma model is split into `model_q4f16.onnx` (0.3 MB graph protobuf) and `model_q4f16.onnx_data` (260 MB weights). When downloaded, the 0.3 MB graph file finishes in 50ms. If progress trackers do not filter strictly for `.onnx_data`, the UI falsely displays `100% (0.3 MB / 0.3 MB)` before execution fails on the GPU.
+## 20. 4-Quadrant Celestial Anchoring, TILT_Z Abort Recovery, Accelerometer Gravity Isolation & 3.5m Radius Invariants
+* **TILT_Z Multi-Branch Abort Invariant:** `TILT_Z` must never lock execution in a dead end. If the user turns horizontally away from the target azimuth by more than 25 degrees, lowers the phone flat (`alt < 8.0` degrees), moves at least 1.5 meters, or if 12 seconds elapse without reaching target elevation, the system immediately aborts back to `SWEEP_XY`, clears the targeting cursor, turns the status dot red (`SCANNING`), and speaks "Scanning...".
+* **Accelerometer Gravity Isolation Invariant:** Android Chrome returns null for `event.acceleration.x`, falling back to `accelerationIncludingGravity` which carries Earth's 9.81 m/s^2 constant vector. Footstep integration must subtract the 9.81 m/s^2 gravity baseline: `dynamicMag = Math.abs(rawMag - 9.81)`. Dynamic acceleration must exceed 1.4 m/s^2 with a minimum 350ms cadence. Holding or tilting the phone while stationary must produce zero displacement accumulation.
+* **4-Quadrant Celestial Horizon Architecture:** To prevent cursor flipping in dense star fields, the 360-degree horizon is partitioned into 4 cardinal 90-degree quadrants:
+  - Quadrant 1 (NE): [0, 90) degrees.
+  - Quadrant 2 (SE): [90, 180) degrees.
+  - Quadrant 3 (SW): [180, 270) degrees.
+  - Quadrant 4 (NW): [270, 360) degrees.
+  Each quadrant selects a single dominant anchor target (prioritizing major visible solar system planets, then brightest stars, excluding cooling targets). The system stays locked to that quadrant anchor as long as the user faces into that quadrant.
+* **Kinematic Freedom Boundary (3.50 Meters):** During `OBSERVING`, phone pitch, roll, tilt, and arm posture are completely ignored. The phone can be lowered to the waist, placed in a pocket, or held at any angle. Observation mode persists until physical walking displacement reaches at least 3.50 meters (~5 to 6 paces) from the origin or the user taps the screen.
+* **Temporal Dead Zone Scope Safety:** Variable declarations in state transition functions must strictly precede any condition checks that reference them. In `TILT_Z`, `targetAlt` must be declared before evaluating abort predicates.
+
+
+
+
+
+
+

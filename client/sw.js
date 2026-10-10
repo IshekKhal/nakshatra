@@ -3,7 +3,7 @@
  * Provides 100% offline rooftop PWA capabilities with Cache-First App Shell caching.
  */
 
-const CACHE_NAME = 'scotopic-shell-v2';
+const CACHE_NAME = 'scotopic-shell-v13';
 
 const PRECACHE_RESOURCES = [
   './',
@@ -21,6 +21,7 @@ const PRECACHE_RESOURCES = [
   './src/acoustic_beacon.js',
   './src/speech_engine.js',
   './src/local_gemma.js',
+  './src/gemma_worker.js',
   './src/orchestrator.js',
   './icons/icon-192.svg',
   './icons/icon-512.svg'

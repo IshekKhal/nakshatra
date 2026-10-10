@@ -71,9 +71,97 @@ export class SessionOrchestrator {
     this.currentTarget = null;
     this.wasLocked = false;
 
-    // V2 timing & debounce tracking
+    // V2 timing, hysteresis & tour tracking
     this._headingDwellStart = 0;
     this._lastTiltCueTime = 0;
+    this._observingStartTime = 0;
+    this._lastPostureWarningTime = 0;
+    this._lastScanningReminderTime = 0;
+    this._visitedTargets = new Set();
+    this._targetCooldowns = new Map();
+    this._latchedTarget = null;
+    this._activeQuadrant = null;
+    this._tiltZStartTime = 0;
+  }
+
+  /**
+   * Returns quadrant index [1, 2, 3, 4] for a given heading azimuth [0, 360).
+   * Q1 (North-East): [0, 90)
+   * Q2 (South-East): [90, 180)
+   * Q3 (South-West): [180, 270)
+   * Q4 (North-West): [270, 360)
+   * @param {number} az Heading azimuth in degrees
+   * @returns {number} Quadrant [1, 2, 3, 4]
+   */
+  getQuadrant(az) {
+    const normAz = ((az % 360) + 360) % 360;
+    return Math.floor(normAz / 90) + 1;
+  }
+
+  /**
+   * Selects the single dominant, anchored celestial target for a given quadrant.
+   * Prioritizes major planetary bodies (Moon, Jupiter, Saturn, Venus, Mars) and brightest stars.
+   * Filters out targets on active cooldown.
+   * @param {number} quadrant Quadrant [1, 2, 3, 4]
+   * @param {Array} allTargets List of visible targets
+   * @returns {Object|null} Anchored celestial target
+   */
+  getQuadrantAnchorTarget(quadrant, allTargets) {
+    if (!allTargets || allTargets.length === 0) return null;
+
+    // Filter targets whose azimuth falls into this quadrant
+    const inQuadrant = allTargets.filter(t => {
+      if (typeof t.azimuth !== 'number') return false;
+      return this.getQuadrant(t.azimuth) === quadrant;
+    });
+
+    if (inQuadrant.length === 0) return null;
+
+    // Prioritize uncooled targets, then unvisited targets
+    const uncooled = inQuadrant.filter(t => !this._isTargetCooledDown(t.name));
+    const pool = uncooled.length > 0 ? uncooled : inQuadrant;
+
+    const unvisited = pool.filter(t => !this._visitedTargets.has(t.name));
+    const candidatePool = unvisited.length > 0 ? unvisited : pool;
+
+    // Sort by prominence: major solar system bodies first, then visual magnitude (lowest mag = brightest)
+    candidatePool.sort((a, b) => {
+      const isSolarA = ['moon', 'jupiter', 'saturn', 'mars', 'venus', 'mercury'].includes(String(a.name || '').toLowerCase());
+      const isSolarB = ['moon', 'jupiter', 'saturn', 'mars', 'venus', 'mercury'].includes(String(b.name || '').toLowerCase());
+      if (isSolarA && !isSolarB) return -1;
+      if (!isSolarA && isSolarB) return 1;
+      const magA = typeof a.mag === 'number' ? a.mag : 5.0;
+      const magB = typeof b.mag === 'number' ? b.mag : 5.0;
+      return magA - magB;
+    });
+
+    return candidatePool[0] || null;
+  }
+
+  /**
+   * Checks whether a celestial target is currently cooling down.
+   * @param {string} targetName Target name
+   * @returns {boolean}
+   * @private
+   */
+  _isTargetCooledDown(targetName) {
+    if (!targetName) return false;
+    const expiry = this._targetCooldowns.get(targetName);
+    if (!expiry) return false;
+    if (Date.now() < expiry) return true;
+    this._targetCooldowns.delete(targetName);
+    return false;
+  }
+
+  /**
+   * Sets a 30-minute cooldown on an observed target.
+   * @param {string} targetName Target name
+   * @param {number} [durationMs=1800000] Duration in milliseconds (default 30 mins)
+   * @private
+   */
+  _setTargetCooldown(targetName, durationMs = 30 * 60 * 1000) {
+    if (!targetName) return;
+    this._targetCooldowns.set(targetName, Date.now() + durationMs);
   }
 
   /**
@@ -144,7 +232,14 @@ export class SessionOrchestrator {
       try {
         const moon = this.ephemerisEngine.computeBodyHorizontal('Moon', new Date());
         if (moon && typeof moon.azimuth === 'number' && moon.altitude > 0) {
-          trueAzimuth = moon.azimuth;
+          return moon.azimuth;
+        }
+        // If Moon is below horizon, resolve brightest major planet currently above horizon
+        for (const body of ['Venus', 'Jupiter', 'Saturn', 'Mars']) {
+          const planet = this.ephemerisEngine.computeBodyHorizontal(body, new Date());
+          if (planet && typeof planet.azimuth === 'number' && planet.altitude > 0) {
+            return planet.azimuth;
+          }
         }
       } catch (_) {
         trueAzimuth = 270.0;
@@ -180,6 +275,7 @@ export class SessionOrchestrator {
 
     this._moonCalibrated = true;
     this._rebarCalibrated = true;
+    this._lastScanningReminderTime = Date.now();
     this._setState(APP_STATES.SWEEP_XY);
 
     if (this.displayController && typeof this.displayController.setStatusDot === 'function') {
@@ -247,6 +343,35 @@ export class SessionOrchestrator {
       return this.state;
     }
 
+    if (this.state === APP_STATES.OBSERVING) {
+      if (this.currentTarget && this.currentTarget.name) {
+        this._visitedTargets.add(this.currentTarget.name);
+        this._setTargetCooldown(this.currentTarget.name, 30 * 60 * 1000);
+      }
+      this.currentTarget = null;
+      this._latchedTarget = null;
+      if (this.orientationTracker && typeof this.orientationTracker.resetDisplacement === 'function') {
+        this.orientationTracker.resetDisplacement();
+      }
+      this._setState(APP_STATES.SWEEP_XY);
+      this._lastScanningReminderTime = Date.now();
+      if (this.acousticBeacon && typeof this.acousticBeacon.silence === 'function') {
+        this.acousticBeacon.silence();
+      }
+      if (this.displayController) {
+        if (typeof this.displayController.setStatusDot === 'function') {
+          this.displayController.setStatusDot('standby', 'SCANNING', 'red');
+        }
+        if (typeof this.displayController.clearCanvas === 'function') {
+          this.displayController.clearCanvas();
+        }
+      }
+      if (this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
+        this.speechSynthesizer.whisper('Scanning...');
+      }
+      return this.state;
+    }
+
     return this.state;
   }
 
@@ -274,24 +399,48 @@ export class SessionOrchestrator {
         return;
       }
 
-      const visibleTargets = this.ephemerisEngine.getAllVisibleTargets(new Date(), this.skylineManager) || [];
+      // Gentle debounced posture reminder if phone is tilted up prematurely
+      const now = Date.now();
+      if (alt > 35.0 && now - this._lastPostureWarningTime > 6000) {
+        this._lastPostureWarningTime = now;
+        if (this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
+          this.speechSynthesizer.whisper('Hold phone flat to scan the horizon.');
+        }
+      }
+
+      const allTargets = this.ephemerisEngine.getAllVisibleTargets(new Date(), this.skylineManager) || [];
+      const currentQuadrant = this.getQuadrant(az);
+
       let closestTarget = null;
       let minAbsDelta = Infinity;
       let signedDelta = 0;
 
-      for (const t of visibleTargets) {
-        if (typeof t.azimuth !== 'number') continue;
-        const diff = this._shortestAngleDiff(t.azimuth, az);
-        const absDiff = Math.abs(diff);
-        if (absDiff < minAbsDelta) {
-          minAbsDelta = absDiff;
-          signedDelta = diff;
-          closestTarget = t;
+      // 4-Quadrant Architecture:
+      // If the currently latched target belongs to this quadrant and is not cooling down, stick with it!
+      if (this._latchedTarget && this.getQuadrant(this._latchedTarget.azimuth) === currentQuadrant && !this._isTargetCooledDown(this._latchedTarget.name)) {
+        closestTarget = this._latchedTarget;
+      } else {
+        closestTarget = this.getQuadrantAnchorTarget(currentQuadrant, allTargets);
+        if (!closestTarget && allTargets.length > 0) {
+          // If this quadrant has no visible stars above skyline, fall back to nearest target
+          let nearest = null;
+          let minD = Infinity;
+          for (const t of allTargets) {
+            const diff = Math.abs(this._shortestAngleDiff(t.azimuth, az));
+            if (diff < minD) { minD = diff; nearest = t; }
+          }
+          closestTarget = nearest;
         }
+        this._latchedTarget = closestTarget;
       }
 
-      // Check within +/- 30 degrees sector
-      if (closestTarget && minAbsDelta <= 30.0) {
+      if (closestTarget) {
+        signedDelta = this._shortestAngleDiff(closestTarget.azimuth, az);
+        minAbsDelta = Math.abs(signedDelta);
+      }
+
+      // Check within +/- 45 degrees quadrant cone
+      if (closestTarget && minAbsDelta <= 45.0) {
         this.currentTarget = closestTarget;
 
         // Acoustic proximity pulses accelerate as alignment tightens
@@ -303,20 +452,28 @@ export class SessionOrchestrator {
           }
         }
 
-        // Render faint 650nm deep red chevron indicating turn direction
+        // Render distinct 650nm deep red chevron indicating turn direction
         if (this.displayController && typeof this.displayController.drawChevron === 'function') {
-          this.displayController.drawChevron(signedDelta, 0.6);
+          this.displayController.drawChevron(signedDelta, 0.8);
         }
 
-        // Heading Dwell Lock: held steady within 5 degrees for 1200ms
-        if (minAbsDelta <= 5.0) {
+        // Heading Dwell Lock: steady within 6.0 degrees for 1000ms
+        if (minAbsDelta <= 6.0) {
           if (!this._headingDwellStart) {
             this._headingDwellStart = Date.now();
-          } else if (Date.now() - this._headingDwellStart >= 1200) {
-            // Heading Locked!
-            if (this.acousticBeacon && typeof this.acousticBeacon.playLockChime === 'function') {
-              this.acousticBeacon.playLockChime();
+          } else if (Date.now() - this._headingDwellStart >= 1000) {
+            // Heading Locked: Silence proximity beacon immediately
+            if (this.acousticBeacon) {
+              if (typeof this.acousticBeacon.silence === 'function') {
+                this.acousticBeacon.silence();
+              } else if (typeof this.acousticBeacon.updateProximity === 'function') {
+                this.acousticBeacon.updateProximity(Infinity);
+              }
+              if (typeof this.acousticBeacon.playLockChime === 'function') {
+                this.acousticBeacon.playLockChime();
+              }
             }
+
             if (this.displayController) {
               if (typeof this.displayController.setStatusDot === 'function') {
                 this.displayController.setStatusDot('locked');
@@ -325,6 +482,7 @@ export class SessionOrchestrator {
                 this.displayController.clearCanvas();
               }
             }
+
             if (this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
               this.speechSynthesizer.whisper('Heading locked. Bring phone to your chin.');
             }
@@ -332,6 +490,7 @@ export class SessionOrchestrator {
             this._setState(APP_STATES.TILT_Z);
             this._headingDwellStart = 0;
             this._lastTiltCueTime = Date.now();
+            this._tiltZStartTime = Date.now();
           }
         } else {
           this._headingDwellStart = 0;
@@ -341,14 +500,23 @@ export class SessionOrchestrator {
         this.currentTarget = null;
         this._headingDwellStart = 0;
         if (this.acousticBeacon) {
-          if (typeof this.acousticBeacon.updateSectorProximity === 'function') {
-            this.acousticBeacon.updateSectorProximity(Infinity);
+          if (typeof this.acousticBeacon.silence === 'function') {
+            this.acousticBeacon.silence();
           } else if (typeof this.acousticBeacon.updateProximity === 'function') {
             this.acousticBeacon.updateProximity(Infinity);
           }
         }
         if (this.displayController && typeof this.displayController.clearCanvas === 'function') {
           this.displayController.clearCanvas();
+        }
+
+        // Periodic unhurried scanning voice reminder
+        const isSpeaking = this.speechSynthesizer && typeof this.speechSynthesizer.isSpeaking === 'function' && this.speechSynthesizer.isSpeaking();
+        if (!isSpeaking && now - this._lastScanningReminderTime > 12000) {
+          this._lastScanningReminderTime = now;
+          if (this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
+            this.speechSynthesizer.whisper('Scanning...');
+          }
         }
       }
       return;
@@ -358,41 +526,128 @@ export class SessionOrchestrator {
     // V2 Phase 2: Vertical Head Tilt (Z Axis at Chin Level)
     // -------------------------------------------------------------
     if (this.state === APP_STATES.TILT_Z) {
+      // Ensure proximity tones stay completely silent during vertical tilt
+      if (this.acousticBeacon && typeof this.acousticBeacon.silence === 'function') {
+        this.acousticBeacon.silence();
+      }
+
+      // Exit / abort conditions for TILT_Z:
       const targetAlt = (this.currentTarget && typeof this.currentTarget.altitude === 'number')
         ? this.currentTarget.altitude
         : 45.0;
-      const altDiff = targetAlt - alt;
+      const targetAz = (this.currentTarget && typeof this.currentTarget.azimuth === 'number') ? this.currentTarget.azimuth : az;
+      const headingDev = Math.abs(this._shortestAngleDiff(targetAz, az));
+      const tiltElapsed = this._tiltZStartTime > 0 ? Date.now() - this._tiltZStartTime : 0;
+      const displacement = (this.orientationTracker && typeof this.orientationTracker.getDisplacementSinceLock === 'function')
+        ? this.orientationTracker.getDisplacementSinceLock()
+        : 0.0;
 
-      // Target Altitude Lock: within 3 degrees of target elevation
-      if (Math.abs(altDiff) <= 3.0) {
-        if (this.acousticBeacon && typeof this.acousticBeacon.playLockChime === 'function') {
-          this.acousticBeacon.playLockChime();
+      // Abort if user turned away horizontally > 25 deg, lowered phone flat, walked away >= 1.5m, or timed out > 12s
+      if (headingDev > 25.0 || (alt < 8.0 && targetAlt >= 12.0) || displacement >= 1.5 || tiltElapsed > 12000) {
+        this.currentTarget = null;
+        this._latchedTarget = null;
+        if (this.orientationTracker && typeof this.orientationTracker.resetDisplacement === 'function') {
+          this.orientationTracker.resetDisplacement();
         }
+        this._setState(APP_STATES.SWEEP_XY);
+        this._lastScanningReminderTime = Date.now();
         if (this.displayController) {
           if (typeof this.displayController.setStatusDot === 'function') {
-            this.displayController.setStatusDot('locked');
+            this.displayController.setStatusDot('standby', 'SCANNING', 'red');
           }
           if (typeof this.displayController.clearCanvas === 'function') {
             this.displayController.clearCanvas();
           }
         }
         if (this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
+          this.speechSynthesizer.whisper('Scanning...');
+        }
+        return;
+      }
+
+      const altDiff = targetAlt - alt;
+      const cue = this.gemmaEngine ? this.gemmaEngine.generateTiltGuidance(alt, targetAlt) : 'Tilt your head up';
+
+      // Update top-left status pill synchronously in green
+      if (this.displayController && typeof this.displayController.setStatusDot === 'function') {
+        const badgeLabel = altDiff > 4.0 ? 'TILT UP' : (altDiff < -4.0 ? 'LOWER CHIN' : 'LOCKED');
+        this.displayController.setStatusDot('standby', badgeLabel, 'green');
+      }
+
+      // Render synchronized emerald green text and vertical arrow in screen center
+      if (this.displayController && typeof this.displayController.drawTiltCue === 'function') {
+        this.displayController.drawTiltCue(cue, altDiff);
+      }
+
+      // Target Altitude Lock: within 4 degrees of target elevation
+      if (Math.abs(altDiff) <= 4.0) {
+        if (this.acousticBeacon) {
+          if (typeof this.acousticBeacon.silence === 'function') {
+            this.acousticBeacon.silence();
+          }
+          if (typeof this.acousticBeacon.playLockChime === 'function') {
+            this.acousticBeacon.playLockChime();
+          }
+        }
+
+        this._observingStartTime = Date.now();
+        this._setState(APP_STATES.OBSERVING);
+
+        // Reset physical displacement tracking for the new observation session
+        if (this.orientationTracker && typeof this.orientationTracker.resetDisplacement === 'function') {
+          this.orientationTracker.resetDisplacement();
+        }
+
+        // V2 Phase 3: Central Emerald Green Reticle + Body Card + Dynamic Gemma Lore
+        const targetName = this.currentTarget ? (this.currentTarget.name || this.currentTarget.id) : 'Vega';
+        this._setTargetCooldown(targetName, 30 * 60 * 1000);
+
+        if (this.displayController) {
+          if (typeof this.displayController.setStatusDot === 'function') {
+            this.displayController.setStatusDot('locked', targetName, 'green');
+          }
+          if (typeof this.displayController.drawCelestialLock === 'function') {
+            this.displayController.drawCelestialLock(targetName, '');
+          }
+        }
+
+        // Arrival confirmation vocal whisper
+        if (this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
           this.speechSynthesizer.whisper('Stop right there.');
         }
 
-        this._setState(APP_STATES.OBSERVING);
-
-        // V2 Phase 3: Observation whisper in pure darkness
-        const targetName = this.currentTarget ? (this.currentTarget.name || this.currentTarget.id) : 'Saturn';
-        const observationText = this.gemmaEngine.generateObservationalWhisper(targetName);
-        if (this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
-          this.speechSynthesizer.whisper(observationText);
+        // Asynchronously generate dynamic lore via on-device Gemma engine
+        if (this.gemmaEngine && typeof this.gemmaEngine.generateWhisperAsync === 'function') {
+          this.gemmaEngine.generateWhisperAsync(targetName, this.currentTarget).then((loreText) => {
+            if (this.state === APP_STATES.OBSERVING) {
+              if (this.displayController && typeof this.displayController.drawCelestialLock === 'function') {
+                this.displayController.drawCelestialLock(targetName, loreText);
+              }
+              setTimeout(() => {
+                if (this.state === APP_STATES.OBSERVING && this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
+                  this.speechSynthesizer.whisper(loreText);
+                }
+              }, 1100);
+            }
+          }).catch(() => {
+            const fallbackLore = this.gemmaEngine.generateObservationalWhisper(targetName, this.currentTarget);
+            if (this.state === APP_STATES.OBSERVING) {
+              if (this.displayController && typeof this.displayController.drawCelestialLock === 'function') {
+                this.displayController.drawCelestialLock(targetName, fallbackLore);
+              }
+              setTimeout(() => {
+                if (this.state === APP_STATES.OBSERVING && this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
+                  this.speechSynthesizer.whisper(fallbackLore);
+                }
+              }, 1100);
+            }
+          });
         }
       } else {
-        // Real-time whispered body cues debounced every 1.5 seconds
+        // Real-time whispered body cues debounced every 4.5 seconds
         const now = Date.now();
-        if (now - this._lastTiltCueTime > 1500) {
-          const cue = this.gemmaEngine.generateTiltGuidance(alt, targetAlt);
+        const isSpeaking = this.speechSynthesizer && typeof this.speechSynthesizer.isSpeaking === 'function' && this.speechSynthesizer.isSpeaking();
+        if (!isSpeaking && now - this._lastTiltCueTime > 4500) {
           if (this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
             this.speechSynthesizer.whisper(cue);
           }
@@ -403,11 +658,51 @@ export class SessionOrchestrator {
     }
 
     // -------------------------------------------------------------
-    // V2 Phase 3: Observation in Pure Darkness
+    // V2 Phase 3: Observation Gaze Lock & Physical Displacement Exit
     // -------------------------------------------------------------
     if (this.state === APP_STATES.OBSERVING) {
-      if (this.displayController && typeof this.displayController.clearCanvas === 'function') {
-        this.displayController.clearCanvas();
+      if (this.acousticBeacon && typeof this.acousticBeacon.silence === 'function') {
+        this.acousticBeacon.silence();
+      }
+
+      // CRITICAL LOCK HYSTERESIS: Never interrupt active speech!
+      if (this.speechSynthesizer && typeof this.speechSynthesizer.isSpeaking === 'function' && this.speechSynthesizer.isSpeaking()) {
+        return;
+      }
+
+      const displacement = (this.orientationTracker && typeof this.orientationTracker.getDisplacementSinceLock === 'function')
+        ? this.orientationTracker.getDisplacementSinceLock()
+        : 0.0;
+      const dwellDuration = Date.now() - (this._observingStartTime || 0);
+
+      // Observation persists while gazing!
+      // Phone can be lowered to chest, pocketed, or held at side without exiting.
+      // Observation ONLY exits when the user physically walks away (>=3.50m rooftop displacement).
+      const userWalkedAway = displacement >= 3.50 && dwellDuration > 2500;
+
+      if (userWalkedAway) {
+        if (this.currentTarget && this.currentTarget.name) {
+          this._visitedTargets.add(this.currentTarget.name);
+          this._setTargetCooldown(this.currentTarget.name, 30 * 60 * 1000);
+        }
+        this.currentTarget = null;
+        this._latchedTarget = null;
+        if (this.orientationTracker && typeof this.orientationTracker.resetDisplacement === 'function') {
+          this.orientationTracker.resetDisplacement();
+        }
+        this._setState(APP_STATES.SWEEP_XY);
+        this._lastScanningReminderTime = Date.now();
+        if (this.displayController) {
+          if (typeof this.displayController.setStatusDot === 'function') {
+            this.displayController.setStatusDot('standby', 'SCANNING', 'red');
+          }
+          if (typeof this.displayController.clearCanvas === 'function') {
+            this.displayController.clearCanvas();
+          }
+        }
+        if (this.speechSynthesizer && typeof this.speechSynthesizer.whisper === 'function') {
+          this.speechSynthesizer.whisper('Scanning...');
+        }
       }
       return;
     }
@@ -538,6 +833,11 @@ export class SessionOrchestrator {
    */
   _setState(nextState) {
     this.state = nextState;
+    if (nextState === APP_STATES.TILT_Z) {
+      this._tiltZStartTime = Date.now();
+    } else if (nextState === APP_STATES.OBSERVING) {
+      this._observingStartTime = Date.now();
+    }
     if (typeof this.onStateChange === 'function') {
       this.onStateChange(nextState);
     }

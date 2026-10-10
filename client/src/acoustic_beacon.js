@@ -12,9 +12,13 @@ export class AcousticBeacon {
   /**
    * @param {Object} [options]
    * @param {AudioContext} [options.audioContext] Optional injected AudioContext
+   * @param {Document} [options.documentRef] Optional injected Document reference
+   * @param {Window} [options.windowRef] Optional injected Window reference
    */
-  constructor({ audioContext } = {}) {
+  constructor({ audioContext, documentRef, windowRef } = {}) {
     this.audioCtx = audioContext || null;
+    this.document = documentRef || (typeof document !== 'undefined' ? document : null);
+    this.window = windowRef || (typeof window !== 'undefined' ? window : null);
 
     if (!this.audioCtx && typeof window !== 'undefined') {
       const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
@@ -40,6 +44,8 @@ export class AcousticBeacon {
     if (this.audioCtx) {
       this._initGraph();
     }
+
+    this._bindLifecycleEvents();
   }
 
   /**
@@ -78,6 +84,37 @@ export class AcousticBeacon {
       this.harmonicOsc.frequency.setValueAtTime(this.harmonicFreq, now);
     }
     this.harmonicOsc.connect(this.proximityGain);
+  }
+
+  /**
+   * Binds visibilitychange and pagehide to instantly suspend audio on tab switch / background.
+   * Eliminates background audio bleed when closing or switching away from Chrome.
+   * @private
+   */
+  _bindLifecycleEvents() {
+    if (this.document && typeof this.document.addEventListener === 'function') {
+      this.document.addEventListener('visibilitychange', () => {
+        if (this.document.visibilityState === 'hidden') {
+          this.silence();
+          if (this.audioCtx && typeof this.audioCtx.suspend === 'function') {
+            try { this.audioCtx.suspend(); } catch (_) {}
+          }
+        } else if (this.document.visibilityState === 'visible') {
+          if (this.isUnlocked && this.audioCtx && typeof this.audioCtx.resume === 'function') {
+            try { this.audioCtx.resume(); } catch (_) {}
+          }
+        }
+      });
+    }
+
+    if (this.window && typeof this.window.addEventListener === 'function') {
+      this.window.addEventListener('pagehide', () => {
+        this.silence();
+        if (this.audioCtx && typeof this.audioCtx.suspend === 'function') {
+          try { this.audioCtx.suspend(); } catch (_) {}
+        }
+      });
+    }
   }
 
   /**
@@ -161,7 +198,7 @@ export class AcousticBeacon {
     if (this.audioCtx) {
       const now = this.audioCtx.currentTime || 0;
 
-      // Anti-click gain scheduling
+      // Soft anti-click gain scheduling
       if (this.proximityGain && this.proximityGain.gain) {
         if (typeof this.proximityGain.gain.setValueAtTime === 'function') {
           const currentVal = typeof this.proximityGain.gain.value === 'number'
@@ -170,9 +207,9 @@ export class AcousticBeacon {
           this.proximityGain.gain.setValueAtTime(currentVal, now);
         }
         if (typeof this.proximityGain.gain.setTargetAtTime === 'function') {
-          this.proximityGain.gain.setTargetAtTime(targetGain, now, 0.04);
+          this.proximityGain.gain.setTargetAtTime(targetGain, now, 0.05);
         } else if (typeof this.proximityGain.gain.linearRampToValueAtTime === 'function') {
-          this.proximityGain.gain.linearRampToValueAtTime(targetGain, now + 0.04);
+          this.proximityGain.gain.linearRampToValueAtTime(targetGain, now + 0.05);
         }
       }
 
@@ -185,7 +222,7 @@ export class AcousticBeacon {
           this.fundamentalOsc.frequency.setValueAtTime(currentVal, now);
         }
         if (typeof this.fundamentalOsc.frequency.setTargetAtTime === 'function') {
-          this.fundamentalOsc.frequency.setTargetAtTime(targetFreq, now, 0.04);
+          this.fundamentalOsc.frequency.setTargetAtTime(targetFreq, now, 0.05);
         }
       }
 
@@ -197,7 +234,7 @@ export class AcousticBeacon {
           this.harmonicOsc.frequency.setValueAtTime(currentVal, now);
         }
         if (typeof this.harmonicOsc.frequency.setTargetAtTime === 'function') {
-          this.harmonicOsc.frequency.setTargetAtTime(targetHarmonicFreq, now, 0.04);
+          this.harmonicOsc.frequency.setTargetAtTime(targetHarmonicFreq, now, 0.05);
         }
       }
     }
@@ -232,12 +269,35 @@ export class AcousticBeacon {
       return this.updateProximity(Infinity);
     }
     if (absDelta <= 5.0) {
-      return this.updateProximity(10.0); // Equivalent to full locked proximity
+      return this.updateProximity(10.0); // Clamps to 440Hz / 660Hz / 0.25 gain
     }
     // Map [5.0, 30.0] into equivalent theta [10.0, 25.0]
     const ratio = (absDelta - 5.0) / 25.0; // 0.0 at 5 deg, 1.0 at 30 deg
     const equivalentTheta = 10.0 + ratio * 15.0;
     return this.updateProximity(equivalentTheta);
+  }
+
+  /**
+   * Immediately silences the proximity beacon tones.
+   * Ramps proximity gain to 0.0 with an anti-click envelope.
+   */
+  silence() {
+    this.currentSeparation = Infinity;
+    this.proximityGainVal = 0.0;
+    if (this.audioCtx && this.proximityGain && this.proximityGain.gain) {
+      const now = this.audioCtx.currentTime || 0;
+      if (typeof this.proximityGain.gain.setValueAtTime === 'function') {
+        const currentVal = typeof this.proximityGain.gain.value === 'number'
+          ? this.proximityGain.gain.value
+          : 0.0;
+        this.proximityGain.gain.setValueAtTime(currentVal, now);
+      }
+      if (typeof this.proximityGain.gain.setTargetAtTime === 'function') {
+        this.proximityGain.gain.setTargetAtTime(0.0, now, 0.02);
+      } else if (typeof this.proximityGain.gain.linearRampToValueAtTime === 'function') {
+        this.proximityGain.gain.linearRampToValueAtTime(0.0, now + 0.02);
+      }
+    }
   }
 
   /**
@@ -367,6 +427,6 @@ export class AcousticBeacon {
    * Silences beacon proximity oscillator tone.
    */
   stop() {
-    this.updateProximity(Infinity);
+    this.silence();
   }
 }

@@ -54,7 +54,7 @@ test('GemmaEngine - Observational whispers for all 11 primary celestial targets'
   for (const target of targets) {
     const text = gemma.generateObservationalWhisper(target);
     assert.ok(text.length > 20);
-    assert.ok(text.startsWith('Look straight out into the dark.'));
+    assert.ok(!text.includes('undefined'));
     gemma.validateJargonFree(text);
   }
 });
@@ -75,4 +75,24 @@ test('GemmaEngine - Jargon validator detects forbidden astronomical terms', () =
   }, /Strict Gemma grammar violation/);
 
   assert.equal(gemma.validateJargonFree('Turn a little to your right.'), true);
+});
+
+test('GemmaEngine - initGemma, clearModelCache, and generateWhisperAsync lifecycle', async () => {
+  const gemma = new GemmaEngine();
+  assert.equal(gemma.isModelLoaded, false);
+  assert.equal(gemma.downloadStatus, 'idle');
+
+  // clearModelCache returns false in headless environment without window.indexedDB
+  const cleared = await gemma.clearModelCache();
+  assert.equal(cleared, false);
+
+  // generateWhisperAsync returns bespoke observational whisper when offline/unloaded
+  const asyncText = await gemma.generateWhisperAsync('Vega');
+  assert.ok(asyncText.includes('Vega'));
+  gemma.validateJargonFree(asyncText);
+
+  // generateWhisperAsync handles any arbitrary star name gracefully
+  const customStarText = await gemma.generateWhisperAsync('Alioth');
+  assert.ok(customStarText.includes('Alioth'));
+  gemma.validateJargonFree(customStarText);
 });
