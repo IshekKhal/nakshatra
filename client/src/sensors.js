@@ -106,12 +106,20 @@ export class OrientationTracker {
     if (!event) return;
 
     let dynamicMag = 0;
+    let hasLinearAcc = false;
+
     if (event.acceleration && typeof event.acceleration.x === 'number' && event.acceleration.x !== null) {
       const ax = Number(event.acceleration.x) || 0;
       const ay = Number(event.acceleration.y) || 0;
       const az = Number(event.acceleration.z) || 0;
-      dynamicMag = Math.sqrt(ax * ax + ay * ay + az * az);
-    } else if (event.accelerationIncludingGravity) {
+      const mag = Math.sqrt(ax * ax + ay * ay + az * az);
+      if (mag > 0.05) {
+        dynamicMag = mag;
+        hasLinearAcc = true;
+      }
+    }
+
+    if (!hasLinearAcc && event.accelerationIncludingGravity) {
       const ax = Number(event.accelerationIncludingGravity.x) || 0;
       const ay = Number(event.accelerationIncludingGravity.y) || 0;
       const az = Number(event.accelerationIncludingGravity.z) || 0;
@@ -120,8 +128,8 @@ export class OrientationTracker {
     }
 
     const now = Date.now();
-    // Real footstep shock threshold: dynamic acceleration > 1.4 m/s^2 with human cadence >= 350ms
-    if (dynamicMag > 1.4 && (now - this._lastStepTime > 350)) {
+    // Real footstep shock threshold: dynamic acceleration > 0.50 m/s^2 with human cadence >= 300ms
+    if (dynamicMag > 0.50 && (now - this._lastStepTime > 300)) {
       this._lastStepTime = now;
       this.stepsDetected += 1;
       this.displacementMeters += 0.65;

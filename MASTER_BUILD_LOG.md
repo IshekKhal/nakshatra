@@ -699,6 +699,74 @@ This section documents every failure, architectural obstacle, hardware limit, an
      - Verified `TILT_Z` abort: turning away 35 degrees immediately transitioned from `TILT_Z` back to `SWEEP_XY`.
      - Verified `OBSERVING` decoupling: holding phone flat and tilting at 2.0m retained `OBSERVING`. Reaching 3.6m displacement triggered clean exit to `SWEEP_XY` and placed target on cooldown.
 
+---
+
+## Session 16: Code Modularization, Weighted Random Celestial Selection, Urban Obstruction Floor & Pedometer Sensor Alignment
+* **Lead Systems Architect:** Super Chat (Lead Systems Architect)
+* **Collaborator:** Abhishek Khanra
+* **Objective:** Audit system architecture; eliminate exclusive planet prioritization in favor of weighted candidate selection across all 80+ celestial bodies; resolve flat horizon / building obstruction false locks; fix sensor tilt abort traps during chest-to-chin transit; repair accelerometer pedometer step detection on Android devices; modularize monolithic state machine files into sub-modules under 450 lines.
+
+### Completed Tasks & Verifications:
+1. **Unbiased Architectural Code Audit:**
+   - Identified five compounding defects across the sensor and orchestration pipeline:
+     1. `getQuadrantAnchorTarget` exclusively sorted by planets first and magnitude second, starving 90% of the catalog from ever being targeted.
+     2. In `TILT_Z`, low-elevation stars (12°–15°) matched the flat holding pitch (12°–15°) of a phone pointed at concrete buildings, triggering immediate false locks at the horizon.
+     3. Heading drift during chest-to-chin arm lift (15°–25° magnetometer distortion) tripped the 25° heading abort, dropping users back into `SWEEP_XY`.
+     4. Android devices returning zeroed linear acceleration arrays (`[0, 0, 0]`) failed the dynamic magnitude check and bypassed gravity fallback, freezing displacement accumulation at 0.0m and breaking the 3.0m walk-away boundary.
+     5. `orchestrator.js` grew past 800 lines, entangling separate lifecycle states.
+2. **Codebase Modularization:**
+   - Split monolithic files into targeted modules:
+     - `client/src/orchestrator_states.js` (14 lines): Defines `APP_STATES` enum constants.
+     - `client/src/quadrant_selector.js` (197 lines): Cardinal horizon mapping, building altitude thresholding, weighted selection probabilities, sticky latching, and 30-minute cooldowns.
+     - `client/src/radar_phase_handlers.js` (390 lines): Isolated sensor frame handlers for `SWEEP_XY`, `TILT_Z`, `OBSERVING`, and legacy `STARGAZING`.
+     - `client/src/orchestrator.js` (reduced from 802 lines to 453 lines): High-level coordination, calibration flow, and delegation.
+3. **Weighted Random Celestial Selection:**
+   - Implemented `QuadrantSelector._pickWeightedCandidate()`:
+     - Base weight = 1.0 for all 80+ bodies.
+     - Unvisited multiplier = 2.0x to encourage sky exploration.
+     - Solar system boost = +1.5.
+     - Bright anchor boost (mag <= 1.0) = +1.0.
+     - Deep sky / Messier boost = +0.6.
+     - Faint stars, nebulae, and meteor radiants retain active selection probabilities without neglect.
+4. **Urban Building Obstruction Floor:**
+   - Enforced `MIN_VISIBLE_ALTITUDE_DEG = 18.0°` in `QuadrantSelector` to filter out stars obscured behind urban balconies and street-level structures.
+   - Enforced `alt >= 15.0°` prerequisite in `TILT_Z` altitude lock check (`alt >= 15.0 && Math.abs(altDiff) <= 6.5`), guaranteeing that phones held flat at the horizon cannot trigger celestial lock.
+5. **Sensor Tilt & Posture Transit Relaxation:**
+   - Relaxed `TILT_Z` abort margin to `headingDev > 45.0°` to accommodate normal magnetometer swing when lifting the arm from chest to chin.
+   - Extended tilt timeout to 45 seconds and debounced flat posture abort to `tiltElapsed > 3500 && alt < 8.0 && targetAlt >= 18.0`.
+6. **Android Accelerometer Pedometer Fallback:**
+   - Updated `OrientationTracker.handleMotion()` in `client/src/sensors.js`:
+     - Checks if `event.acceleration` provides non-zero magnitude (`mag > 0.05`).
+     - Falls back to `event.accelerationIncludingGravity` (`Math.abs(rawMag - 9.81)`) if linear acceleration is zeroed or absent.
+     - Tuned footstep sensitivity to `dynamicMag > 0.50 m/s²` with `300ms` cadence, recording 0.65m per step.
+7. **Automated Verification:**
+   - Updated precache in `client/sw.js` and incremented cache name to `scotopic-shell-v15`.
+   - Updated `client/tests/orchestration_v2.test.js` Tests 4 and 7 to test weighted quadrant latching and heading convergence.
+   - Executed `npm test` across 5 consecutive runs: 81/81 tests passing deterministically (100% pass rate).
+
+---
+
+### Error 16: Sensor Pedometer Zero-Array Lockout, Concrete Horizon False Elevation, and Monolithic State Entanglement
+* **Field Symptoms & Error Output:**
+  1. Walking 3 meters across the room or balcony did not exit `OBSERVING` mode; the lock remained frozen on the star.
+  2. Holding the phone flat at chest level while looking at an opposing building triggered false star locks without tilting up.
+  3. Lifting the phone to the chin during `TILT_Z` aborted immediately back to scanning.
+  4. Only solar system planets or the brightest star in a quadrant were selected; all other catalog targets were neglected.
+* **Underlying Root Cause Analysis:**
+  1. In Chromium on Android, devices lacking fused hardware linear acceleration populate `event.acceleration` with `{ x: 0, y: 0, z: 0 }`. The check `typeof event.acceleration.x === 'number'` returned true with zero magnitude, preventing execution from reaching `event.accelerationIncludingGravity`. Dynamic magnitude remained 0.0 m/s², so footsteps never registered.
+  2. Catalog objects with low altitudes (12°–15°) were matched by flat phone orientations (12°–15°). The elevation check `Math.abs(altDiff) <= 6.5` evaluated to true while the user stood facing an urban building.
+  3. Lifting a smartphone changes the sensor coordinate frame relative to the body, producing 15°–25° of heading swing. The 25° heading abort threshold killed `TILT_Z` mid-transit.
+  4. Hardcoded prominence sorting in the quadrant selector picked only the first item in the sorted candidate list.
+* **Solution Strategy:**
+  1. Add magnitude verification (`mag > 0.05`) before accepting `event.acceleration`; fall back to gravity-subtracted `accelerationIncludingGravity` when linear acceleration is zeroed. Set step threshold to `0.50 m/s²`.
+  2. Filter candidates by `minAltitudeDeg = 18.0°` and require `alt >= 15.0°` in `TILT_Z` to prevent locks at flat horizon.
+  3. Expand `TILT_Z` heading abort margin to 45.0° and extend timeout to 45 seconds.
+  4. Replace deterministic array sort with weighted random selection where all targets hold selection probability.
+  5. Deconstruct `orchestrator.js` into `quadrant_selector.js`, `radar_phase_handlers.js`, and `orchestrator_states.js`.
+* **Verification:**
+  - Automated test suite: `client/tests/orchestration_v2.test.js` verified with 81/81 tests passing in both `client/` and project root across 5 successive runs.
+
+
 
 
 

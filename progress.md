@@ -144,10 +144,14 @@ _Updated: October 7, 2026 | Session 3 — Backend Phase 1 Completed; 18 Automate
   - [x] Fixed Temporal Dead Zone `ReferenceError` for `targetAlt` in `orchestrator.js`.
   - [x] Incremented Service Worker cache version to `scotopic-shell-v13`.
   - [x] Expanded automated test suite to 81 tests (`npm test`: 81/81 passing across 7 suites in ~1.34s).
-  - [x] Live CDP verification on connected Motorola phone (`moto g45 5G`, target 7070) confirming quadrant calculations, `TILT_Z` turn abort, and 3.5m observation decoupling.
-
-
-
+  - [x] **Scotopic V2 Code Modularization, Weighted Celestial Selection, Urban Obstruction Floor & Pedometer Alignment (Session 16)**
+  - [x] Audited full codebase and deconstructed monolithic `orchestrator.js` (802 lines -> 453 lines) into `quadrant_selector.js` (197 lines), `radar_phase_handlers.js` (390 lines), and `orchestrator_states.js` (14 lines).
+  - [x] Implemented non-exclusive weighted random candidate selection giving all 80+ celestial bodies a fair choice probability while providing modest boosts for planets (+1.5), bright stars (+1.0), Messier objects (+0.6), and unvisited targets (2.0x).
+  - [x] Enforced urban building obstruction floor with `MIN_VISIBLE_ALTITUDE_DEG = 18.0°` in `QuadrantSelector` and `alt >= 15.0°` lock threshold in `TILT_Z`, stopping false star locks on flat horizons facing buildings.
+  - [x] Relaxed `TILT_Z` transit abort margin to 45.0 degrees and 45-second timeout, preventing premature aborts during chest-to-chin arm lift.
+  - [x] Repaired Android accelerometer pedometer step detection in `sensors.js` by checking for non-zero linear acceleration magnitude before falling back to `accelerationIncludingGravity`, tuning sensitivity to `0.50 m/s²` with 0.65m per step.
+  - [x] Incremented Service Worker cache to `scotopic-shell-v15` in `client/sw.js` and precached all new modular files.
+  - [x] Maintained 100% automated test pass rate (81/81 tests passing in `npm test` across 5 consecutive deterministic runs).
 
 
 
