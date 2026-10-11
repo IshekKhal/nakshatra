@@ -1,8 +1,14 @@
 # Dependencies
+node_modules/
 */node_modules/
 
 # Documentation & Sensitive files
 /docs/*
+
+# Local logs and notes
+MASTER_BUILD_LOG.md
+memory.md
+progress.md
 
 # Environment & Local secrets
 .env*
@@ -12,3 +18,9 @@
 *.log
 .DS_Store
 Thumbs.db
+
+# Temporary and Scratch files
+scratch/
+tmp/
+temp/
+*.tmp
